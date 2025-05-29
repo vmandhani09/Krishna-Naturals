@@ -30,30 +30,43 @@ export default function RegisterPage() {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!")
-      return
+      alert("Passwords do not match!");
+      return;
     }
 
     if (!formData.agreeToTerms) {
-      alert("Please agree to the terms and conditions!")
-      return
+      alert("Please agree to the terms and conditions!");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
-    // Simulate registration
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Registration successful! Please login to continue.")
-      router.push("/auth/login")
-    }, 1000)
-  }
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.message);
+        router.push("/auth/login"); // Redirect to login page
+      } else {
+        alert(result.error);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      alert("Something went wrong!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">

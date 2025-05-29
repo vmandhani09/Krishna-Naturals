@@ -27,17 +27,32 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Login successful!")
-      router.push("/home")
-    }, 1000)
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: formData.email, password: formData.password }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      alert("Login successful!");
+      router.push("/home"); // Redirect after successful login
+    } else {
+      alert(result.error); // Show error messages
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    alert("Something went wrong!");
+  } finally {
+    setIsLoading(false);
   }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
