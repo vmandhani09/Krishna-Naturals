@@ -22,7 +22,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("/api/products/get");
+        const response = await fetch("/api/products");
         if (!response.ok) throw new Error("Failed to fetch products");
 
         const data = await response.json();
@@ -43,21 +43,20 @@ export default function AdminProductsPage() {
   );
 
   const lowStockProducts = products.filter((p) => p.stockQuantity < 20);
+const handleDeleteProduct = async (productSku: string) => {
+  if (confirm("Are you sure you want to delete this product?")) {
+    try {
+      const response = await fetch(`/api/products/${productSku}`, { method: "DELETE" }); // ✅ Using SKU in the API route
+      if (!response.ok) throw new Error("Failed to delete product");
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      try {
-        const response = await fetch(`/api/products/delete/${productId}`, { method: "DELETE" });
-        if (!response.ok) throw new Error("Failed to delete product");
-
-        alert("Product deleted successfully!");
-        setProducts(products.filter((product) => product.sku !== productId)); // Remove from local state
-      } catch (error) {
-        console.error("Error deleting product:", error);
-        alert("Failed to delete product. Please try again.");
-      }
+      alert("Product deleted successfully!");
+      setProducts(products.filter((product) => product.sku !== productSku)); // ✅ Filtering based on SKU
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product. Please try again.");
     }
-  };
+  }
+};
 
   const getStockStatus = (quantity: number) => {
     if (quantity === 0) return { label: "Out of Stock", color: "bg-red-100 text-red-800" };

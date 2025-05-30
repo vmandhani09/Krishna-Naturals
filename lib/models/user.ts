@@ -1,15 +1,23 @@
-import { Schema, models, model } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
-const UserSchema = new Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
+interface IUser extends Document {
+  name: string;
+  email: string;
+  password: string;
+  role: "user" | "admin";
+  mobile?: string;
+  createdAt: Date;
+  cart: mongoose.Types.ObjectId[];
+}
+
+const UserSchema = new Schema<IUser>({
+  name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  mobile: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ["admin", "user"], default: "user" }
-}, {
-  timestamps: true,
+  role: { type: String, enum: ["user", "admin"], default: "user" },
+  mobile: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  cart: [{ type: mongoose.Schema.Types.ObjectId, ref: "CartItem" }],
 });
 
-// ✅ Ensuring Proper Model Initialization
-export const User = models.User || model("User", UserSchema);
+export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

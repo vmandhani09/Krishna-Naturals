@@ -1,24 +1,23 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ProductCard } from "@/components/ui/product-card"
-import { Badge } from "@/components/ui/badge"
-import { Heart, ShoppingCart, Star, Truck, Shield, RotateCcw } from "lucide-react"
-import { products } from "@/lib/data"
-import { useCart } from "@/hooks/use-cart"
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProductCard } from "@/components/ui/product-card";
+import { Badge } from "@/components/ui/badge";
+import { Heart, ShoppingCart, Star, Truck, Shield, RotateCcw } from "lucide-react";
+import { products } from "@/lib/products";
 
 export default function ProductDetailPage() {
-  const params = useParams()
-  const slug = params.slug as string
-  const { addToCart } = useCart()
+  const params = useParams();
+  const slug = params.slug as string;
 
-  const product = products.find((p) => p.slug === slug)
-  const [selectedWeight, setSelectedWeight] = useState<string>("")
-  const [quantity, setQuantity] = useState(1)
+  const product = products.find((p) => p.slug === slug);
+  const [selectedWeight, setSelectedWeight] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!product) {
     return (
@@ -26,26 +25,41 @@ export default function ProductDetailPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
         <p className="text-gray-600">The product you're looking for doesn't exist.</p>
       </div>
-    )
+    );
   }
 
-  const selectedWeightOption = product.weights.find((w) => w.label === selectedWeight)
-  const relatedProducts = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4)
+  const selectedWeightOption = product.weights.find((w) => w.label === selectedWeight);
+  const relatedProducts = products.filter((p) => p.category === product.category && p.sku !== product.sku).slice(0, 4);
 
-  const handleAddToCart = () => {
-    if (!selectedWeightOption) return
+  const handleAddToCart = async () => {
+    if (!selectedWeightOption) return;
 
-    addToCart({
-      productId: product.id,
-      productName: product.name,
-      productImage: product.image,
-      weight: selectedWeight,
-      price: selectedWeightOption.price,
-    })
+    setIsLoading(true);
 
-    // Show success message (you can implement toast here)
-    alert("Product added to cart!")
-  }
+    try {
+      const response = await fetch("/api/cart/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku: product.sku, // ✅ Using SKU instead of productId
+          productName: product.name,
+          productImage: product.image,
+          weight: selectedWeight,
+          price: selectedWeightOption.price,
+          quantity,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add product to cart");
+
+      alert("Product added to cart!");
+    } catch (error) {
+      console.error("Error adding product to cart:", error);
+      alert("Failed to add product to cart. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -204,7 +218,7 @@ export default function ProductDetailPage() {
                   <dt className="text-gray-600">Tags:</dt>
                   <dd className="font-medium">{product.tags}</dd>
                 </div>
-              )}
+              )}  
             </dl>
           </div>
         </div>
@@ -216,7 +230,7 @@ export default function ProductDetailPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Related Products</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {relatedProducts.map((relatedProduct) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
+              <ProductCard key={relatedProduct.sku} product={relatedProduct} />
             ))}
           </div>
         </section>

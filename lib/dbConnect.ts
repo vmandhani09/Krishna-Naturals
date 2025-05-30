@@ -9,7 +9,11 @@ if (!MONGODB_URI) {
 
 // ✅ Declare global type for mongoose caching
 declare global {
-  var mongoose: { conn: mongoose.Connection | null; promise: Promise<mongoose.Connection> | null };
+  var mongoose: {
+      Schema: any;
+      models: any;
+      model<T>(arg0: string, CartItemSchema: mongoose.Schema<ICartItem, mongoose.Model<ICartItem, any, any, any, mongoose.Document<unknown, any, ICartItem, any> & ICartItem & { _id: mongoose.Types.ObjectId; } & { __v: number; }, any>, {}, {}, {}, {}, mongoose.DefaultSchemaOptions, ICartItem, mongoose.Document<unknown, {}, mongoose.FlatRecord<ICartItem>, {}> & mongoose.FlatRecord<ICartItem> & { _id: mongoose.Types.ObjectId; } & { __v: number; }>): any; conn: mongoose.Connection | null; promise: Promise<mongoose.Connection> | null 
+};
 }
 
 // ✅ Properly extract `connection` and handle type safely
