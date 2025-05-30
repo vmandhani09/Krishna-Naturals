@@ -1,23 +1,22 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, Minus, Save, ArrowLeft, Upload } from 'lucide-react'
-import { categories } from "@/lib/data"
-import Link from "next/link"
+import type React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Minus, Save, ArrowLeft, Upload } from "lucide-react";
+import { categories } from "@/lib/data";
+import Link from "next/link";
 
 export default function AddProductPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -31,69 +30,79 @@ export default function AddProductPage() {
     weights: [{ label: "", price: 0 }],
     isBranded: true,
     packagingLabelImage: "",
-  })
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: name === "stockQuantity" ? Number.parseInt(value) || 0 : value,
-    }))
-  }
+    }));
+  };
 
   const handleWeightChange = (index: number, field: "label" | "price", value: string) => {
-    const newWeights = [...formData.weights]
+    const newWeights = [...formData.weights];
     newWeights[index] = {
       ...newWeights[index],
       [field]: field === "price" ? Number.parseFloat(value) || 0 : value,
-    }
-    setFormData((prev) => ({ ...prev, weights: newWeights }))
-  }
+    };
+    setFormData((prev) => ({ ...prev, weights: newWeights }));
+  };
 
   const addWeight = () => {
     setFormData((prev) => ({
       ...prev,
       weights: [...prev.weights, { label: "", price: 0 }],
-    }))
-  }
+    }));
+  };
 
   const removeWeight = (index: number) => {
     if (formData.weights.length > 1) {
       setFormData((prev) => ({
         ...prev,
         weights: prev.weights.filter((_, i) => i !== index),
-      }))
+      }));
     }
-  }
+  };
 
   const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-  }
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value
+    const name = e.target.value;
     setFormData((prev) => ({
       ...prev,
       name,
       slug: generateSlug(name),
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Product added successfully!")
-      router.push("/admin/products")
-    }, 1000)
-  }
+    try {
+      const response = await fetch("/api/products/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
+      const result = await response.json();
+      if (response.ok) {
+        alert("Product added successfully!");
+        router.push("/admin/products");
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error adding product:", error);
+      alert("Failed to add product. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">

@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { BarChart3, TrendingUp, TrendingDown, Users, Package, ShoppingCart, DollarSign, Calendar, Target } from 'lucide-react'
-import { products, orders, users } from "@/lib/data"
+import {  orders, users } from "@/lib/data"
+import { products } from "@/lib/products"
 
 export default function AnalyticsPage() {
   // Calculate analytics data
@@ -161,8 +162,8 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="space-y-4">
               {topProducts.map((product, index) => (
-                <div key={product.id} className="flex items-center space-x-3">
-                  <div className="flex items-center justify-center w-8 h-8 bg-stone-100 rounded-full">
+                <div key={product.sku} className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-8 h-8 bg-stone-100 rounded-full">
                     <span className="text-sm font-medium">{index + 1}</span>
                   </div>
                   <div className="flex-1">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -10,32 +10,60 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Search, MoreHorizontal, Edit, Trash2, AlertTriangle, Package } from "lucide-react"
-import { products } from "@/lib/data"
+import { products } from "@/lib/products"
+
+import { Product } from "@/types";
 
 export default function AdminProductsPage() {
-  const [searchTerm, setSearchTerm] = useState("")
+  const [products, setProducts] = useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch products from the API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("/api/products/get");
+        if (!response.ok) throw new Error("Failed to fetch products");
+
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      product.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const lowStockProducts = products.filter((p) => p.stockQuantity < 20)
+  const lowStockProducts = products.filter((p) => p.stockQuantity < 20);
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm("Are you sure you want to delete this product?")) {
-      // Handle delete logic here
-      alert("Product deleted successfully!")
+      try {
+        const response = await fetch(`/api/products/delete/${productId}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("Failed to delete product");
+
+        alert("Product deleted successfully!");
+        setProducts(products.filter((product) => product.sku !== productId)); // Remove from local state
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        alert("Failed to delete product. Please try again.");
+      }
     }
-  }
+  };
 
   const getStockStatus = (quantity: number) => {
-    if (quantity === 0) return { label: "Out of Stock", color: "bg-red-100 text-red-800" }
-    if (quantity < 20) return { label: "Low Stock", color: "bg-yellow-100 text-yellow-800" }
-    return { label: "In Stock", color: "bg-green-100 text-green-800" }
-  }
+    if (quantity === 0) return { label: "Out of Stock", color: "bg-red-100 text-red-800" };
+    if (quantity < 20) return { label: "Low Stock", color: "bg-yellow-100 text-yellow-800" };
+    return { label: "In Stock", color: "bg-green-100 text-green-800" };
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -155,7 +183,7 @@ export default function AdminProductsPage() {
                   const maxPrice = Math.max(...product.weights.map((w) => w.price))
 
                   return (
-                    <TableRow key={product.id}>
+                    <TableRow key={product.sku}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <div className="relative w-12 h-12">
@@ -198,12 +226,11 @@ export default function AdminProductsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/admin/products/edit/${product.id}`}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
+                              <Link href={`/admin/products/edit/${product.sku}`}>
+                                <Button>Edit Product</Button>
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteProduct(product.id)} className="text-red-600">
+                            <DropdownMenuItem onClick={() => handleDeleteProduct(product.sku)} className="text-red-600">
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete
                             </DropdownMenuItem>

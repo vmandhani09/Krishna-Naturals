@@ -1,5 +1,4 @@
 export interface Product {
-  id: string
   name: string
   slug: string
   image: string
@@ -12,6 +11,7 @@ export interface Product {
   brand?: string
   weights: { label: string; price: number }[]
   reviews: Review[]
+  isBranded: boolean
   averageRating: number
 }
 

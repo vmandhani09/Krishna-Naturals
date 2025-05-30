@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RangeSlider } from "@/components/ui/range-slider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, SlidersHorizontal } from "lucide-react"
-import { products, categories } from "@/lib/data"
+import { categories } from "@/lib/data"
+import { products } from "@/lib/products"
 
 export default function ShopPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -56,8 +57,7 @@ export default function ShopPage() {
           return Math.max(...b.weights.map((w) => w.price)) - Math.max(...a.weights.map((w) => w.price))
         case "rating":
           return b.averageRating - a.averageRating
-        case "newest":
-          return b.id.localeCompare(a.id)
+       // Assuming `id` is a timestamp or similar
         case "name":
         default:
           return a.name.localeCompare(b.name)
@@ -218,7 +218,7 @@ export default function ShopPage() {
       ) : filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.name} product={product} />
           ))}
         </div>
       ) : (

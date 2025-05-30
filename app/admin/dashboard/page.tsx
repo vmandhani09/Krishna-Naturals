@@ -3,7 +3,9 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Users, Package, ShoppingCart, TrendingUp, DollarSign, AlertCircle, Plus } from 'lucide-react'
-import { products, users } from "@/lib/data"
+import {  users } from "@/lib/data"
+import { products } from "@/lib/products"
+
 
 export default function AdminDashboardPage() {
   // Mock stats
