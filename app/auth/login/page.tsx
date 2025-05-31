@@ -1,33 +1,37 @@
-"use client"
-
-import type React from "react"
-
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    rememberMe: false,
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [formData, setFormData] = useState({ email: "", password: "", rememberMe: false });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(null); // ✅ Track logged-in user state
+
+  // useEffect(() => {
+  //   // 🔍 Check for existing JWT in cookies
+  //   async function fetchUser() {
+  //     const res = await fetch("/api/auth/me", { method: "GET" });
+  //     const data = await res.json();
+  //     if (res.ok) setUser(data.user);
+  //   }
+  //   fetchUser();
+  // }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
- const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setIsLoading(true);
 
@@ -38,17 +42,28 @@ export default function LoginPage() {
       body: JSON.stringify({ email: formData.email, password: formData.password }),
     });
 
+    // 🔍 Ensure response is valid JSON
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Login API error:", errorText); // Logs raw server error if not JSON
+      alert("Login failed. Please try again.");
+      return;
+    }
+
     const result = await response.json();
 
-    if (response.ok) {
+    if (result.token) {
+      document.cookie = `token=${result.token}; path=/; Secure;`;
       alert("Login successful!");
-      router.push("/home"); // Redirect after successful login
+      localStorage.setItem("refreshUser", Date.now().toString()); // 🔄 Force header refresh
+      router.push("/home");
     } else {
-      alert(result.error); // Show error messages
+      alert(result.error || "Invalid credential");
     }
+
   } catch (error) {
     console.error("Login error:", error);
-    alert("Something went wrong!");
+    alert("Something went wrong. Please check your API connection.");
   } finally {
     setIsLoading(false);
   }
@@ -157,5 +172,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,34 +1,34 @@
 import mongoose from "mongoose";
-import { env } from "process";
 
-const MONGODB_URI = env.MONGODB_URI ?? ""; // ✅ Ensure it's always a string
+const MONGODB_URI = process.env.MONGODB_URI ?? "";
 
 if (!MONGODB_URI) {
   throw new Error("Please define the MONGODB_URI environment variable");
 }
 
-// ✅ Declare global type for mongoose caching
-declare global {
-  var mongoose: {
-      Schema: any;
-      models: any;
-      model<T>(arg0: string, CartItemSchema: mongoose.Schema<ICartItem, mongoose.Model<ICartItem, any, any, any, mongoose.Document<unknown, any, ICartItem, any> & ICartItem & { _id: mongoose.Types.ObjectId; } & { __v: number; }, any>, {}, {}, {}, {}, mongoose.DefaultSchemaOptions, ICartItem, mongoose.Document<unknown, {}, mongoose.FlatRecord<ICartItem>, {}> & mongoose.FlatRecord<ICartItem> & { _id: mongoose.Types.ObjectId; } & { __v: number; }>): any; conn: mongoose.Connection | null; promise: Promise<mongoose.Connection> | null 
-};
+// ✅ Declare global type for Mongoose caching
+interface MongooseCache {
+  conn: mongoose.Connection | null;
+  promise: Promise<mongoose.Connection> | null;
 }
 
-// ✅ Properly extract `connection` and handle type safely
-const cached: { conn: mongoose.Connection | null; promise: Promise<mongoose.Connection> | null } =
-  global.mongoose ?? { conn: null, promise: null };
+// ✅ Explicitly define `global.mongoose` as `MongooseCache`
+declare global {
+  var mongooseCache: MongooseCache;
+}
+
+// ✅ Use global storage for caching
+global.mongooseCache = global.mongooseCache ?? { conn: null, promise: null };
 
 export async function dbConnect() {
-  if (cached.conn) return cached.conn;
+  if (global.mongooseCache.conn) return global.mongooseCache.conn;
 
-  if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+  if (!global.mongooseCache.promise) {
+    global.mongooseCache.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
-    }).then((mongooseInstance) => mongooseInstance.connection); // ✅ Extract only `.connection`
+    }).then((m) => m.connection);
   }
 
-  cached.conn = await cached.promise;
-  return cached.conn;
+  global.mongooseCache.conn = await global.mongooseCache.promise;
+  return global.mongooseCache.conn;
 }

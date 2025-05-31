@@ -23,17 +23,17 @@ export interface Review {
   comment: string
   date: string
 }
-
 export interface User {
-  id: string
-  name: string
-  email: string
-  password: string
-  role: "user" | "admin"
-  mobile?: string
-  createdAt: Date
+  id: string; // ✅ Added ID field for consistency
+  name: string;
+  email: string;
+  password: string;
+  role: "user" | "admin";
+  mobile?: string;
+  createdAt: Date;
+  cart: string[]; // ✅ Updated to store ObjectId as a string array
+  wishlist: string[]; // ✅ Updated to store ObjectId as a string array
 }
-
 export interface CartItem {
   productId: string
   productName: string

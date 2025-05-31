@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProductCard } from "@/components/ui/product-card"
 import { Star, Truck, Shield, Clock } from "lucide-react"
-import { products, categories } from "@/lib/data"
-
+import { categories } from "@/lib/data"
+import products from "@/lib/products"
 export default function HomePage() {
   const featuredProducts = products.slice(0, 4)
 
@@ -93,7 +93,7 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.sku} product={product} />
           ))}
         </div>
 

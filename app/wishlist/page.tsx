@@ -1,16 +1,50 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { ProductCard } from "@/components/ui/product-card"
-import { Button } from "@/components/ui/button"
-import { Heart, ShoppingBag } from "lucide-react"
-import { useWishlist } from "@/hooks/use-wishlist"
-import { products } from "@/lib/data"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ProductCard } from "@/components/ui/product-card";
+import { Button } from "@/components/ui/button";
+import { Heart, ShoppingBag } from "lucide-react";
+import products from "@/lib/products";
+import { Product } from "@/types";
 
 export default function WishlistPage() {
-  const { wishlist } = useWishlist()
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
 
-  const wishlistProducts = products.filter((product) => wishlist.includes(product.id))
+  // ✅ Fetch wishlist (Runs on initial load & listens for updates)
+  const fetchWishlist = () => {
+    const userToken = localStorage.getItem("userToken");
+    setIsLoggedIn(!!userToken);
+
+    if (userToken) {
+      fetch("/api/user/wishlist", {
+        method: "GET",
+        headers: { "user-id": userToken },
+      })
+        .then((res) => res.json())
+        .then((data) => setWishlist(data.wishlist ?? []))
+        .catch((error) => console.error("Error fetching wishlist:", error));
+    } else {
+      setWishlist(JSON.parse(localStorage.getItem("guestWishlist") ?? "[]"));
+    }
+  };
+
+  useEffect(() => {
+    fetchWishlist(); // ✅ Initial fetch
+
+    // 🔄 ✅ Listen for wishlist updates from ProductCard.tsx
+    window.addEventListener("wishlistUpdated", fetchWishlist);
+
+    return () => {
+      window.removeEventListener("wishlistUpdated", fetchWishlist);
+    };
+  }, []);
+
+  useEffect(() => {
+    setWishlistProducts(products.filter((product) => wishlist.includes(product.sku)));
+  }, [wishlist]);
 
   if (wishlistProducts.length === 0) {
     return (
@@ -27,7 +61,7 @@ export default function WishlistPage() {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -41,9 +75,9 @@ export default function WishlistPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {wishlistProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard key={product.sku} product={product} />
         ))}
       </div>
     </div>
-  )
+  );
 }

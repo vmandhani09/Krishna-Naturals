@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { ProductCard } from "@/components/ui/product-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,92 +11,95 @@ import { RangeSlider } from "@/components/ui/range-slider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import { categories } from "@/lib/data"
-import { products } from "@/lib/products"
+import product from "@/lib/products"
+import { Product } from "@/types";
 
 export default function ShopPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedWeights, setSelectedWeights] = useState<string[]>([])
-  const [priceRange, setPriceRange] = useState([0, 2000])
-  const [sortBy, setSortBy] = useState("name")
-  const [showFilters, setShowFilters] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState([0, 2000]);
+  const [sortBy, setSortBy] = useState("name");
+  const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const allWeights = Array.from(new Set(products.flatMap((p) => p.weights.map((w) => w.label))))
-
-  const filteredProducts = useMemo(() => {
-    const filtered = products.filter((product) => {
-      // Search filter
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.tags?.toLowerCase().includes(searchTerm.toLowerCase())
-
-      // Category filter
-      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category)
-
-      // Weight filter
-      const matchesWeight =
-        selectedWeights.length === 0 || product.weights.some((w) => selectedWeights.includes(w.label))
-
-      // Price filter
-      const minPrice = Math.min(...product.weights.map((w) => w.price))
-      const maxPrice = Math.max(...product.weights.map((w) => w.price))
-      const matchesPrice = maxPrice >= priceRange[0] && minPrice <= priceRange[1]
-
-      return matchesSearch && matchesCategory && matchesWeight && matchesPrice
-    })
-
-    // Sort products
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "price-low":
-          return Math.min(...a.weights.map((w) => w.price)) - Math.min(...b.weights.map((w) => w.price))
-        case "price-high":
-          return Math.max(...b.weights.map((w) => w.price)) - Math.max(...a.weights.map((w) => w.price))
-        case "rating":
-          return b.averageRating - a.averageRating
-       // Assuming `id` is a timestamp or similar
-        case "name":
-        default:
-          return a.name.localeCompare(b.name)
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await fetch("/api/products"); // ✅ Fetch from database
+        const data = await response.json();
+        setProducts(data);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setIsLoading(false);
       }
-    })
-
-    return filtered
-  }, [searchTerm, selectedCategories, selectedWeights, priceRange, sortBy])
-
-  const handleCategoryChange = (categoryId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedCategories((prev) => [...prev, categoryId])
-    } else {
-      setSelectedCategories((prev) => prev.filter((id) => id !== categoryId))
     }
-  }
+    fetchProducts();
+  }, []);
 
-  const handleWeightChange = (weight: string, checked: boolean) => {
-    if (checked) {
-      setSelectedWeights((prev) => [...prev, weight])
-    } else {
-      setSelectedWeights((prev) => prev.filter((w) => w !== weight))
-    }
-  }
-
-  const clearFilters = () => {
-    setSearchTerm("")
-    setSelectedCategories([])
-    setSelectedWeights([])
-    setPriceRange([0, 2000])
-    setSortBy("name")
-  }
+  const allWeights = useMemo(() => {
+    return Array.from(new Set(products.flatMap((p) => p.weights?.map((w) => w.label) ?? [])));
+  }, [products]);
 
   const hasActiveFilters =
-    searchTerm ||
+    searchTerm.trim().length > 0 ||
     selectedCategories.length > 0 ||
     selectedWeights.length > 0 ||
-    priceRange[0] > 0 ||
-    priceRange[1] < 2000
+    priceRange[0] !== 0 ||
+    priceRange[1] !== 2000;
+
+  const filteredProducts = useMemo(() => {
+    if (!hasActiveFilters) return products; // ✅ Show all products initially
+
+    return products.filter((product) => {
+      const matchesSearch =
+        (product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+        (product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+        (product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+        (Array.isArray(product.tags)
+          ? product.tags.some((tag: string) => tag.trim().toLowerCase().includes(searchTerm.toLowerCase()))
+          : product.tags?.split(",").some((tag: string) => tag.trim().toLowerCase().includes(searchTerm.toLowerCase())) ?? false);
+
+      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+      const matchesWeight = selectedWeights.length === 0 || product.weights?.some((w) => selectedWeights.includes(w.label));
+
+      const minPrice = Math.min(...(product.weights?.map((w) => w.price) ?? [0]));
+      const maxPrice = Math.max(...(product.weights?.map((w) => w.price) ?? [0]));
+      const matchesPrice = maxPrice >= priceRange[0] && minPrice <= priceRange[1];
+
+      return matchesSearch && matchesCategory && matchesWeight && matchesPrice;
+    }).sort((a, b) => {
+      switch (sortBy) {
+        case "price-low":
+          return Math.min(...(a.weights?.map((w) => w.price) ?? [0])) - Math.min(...(b.weights?.map((w) => w.price) ?? [0]));
+        case "price-high":
+          return Math.max(...(b.weights?.map((w) => w.price) ?? [0])) - Math.max(...(a.weights?.map((w) => w.price) ?? [0]));
+        case "rating":
+          return (b.averageRating ?? 0) - (a.averageRating ?? 0);
+        case "name":
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [products, searchTerm, selectedCategories, selectedWeights, priceRange, sortBy, hasActiveFilters]);
+
+  const handleCategoryChange = (categoryId: string, checked: boolean) => {
+    setSelectedCategories((prev) => (checked ? [...prev, categoryId] : prev.filter((id) => id !== categoryId)));
+  };
+
+  const handleWeightChange = (weight: string, checked: boolean) => {
+    setSelectedWeights((prev) => (checked ? [...prev, weight] : prev.filter((w) => w !== weight)));
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategories([]);
+    setSelectedWeights([]);
+    setPriceRange([0, 2000]);
+    setSortBy("name");
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

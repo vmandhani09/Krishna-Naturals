@@ -1,27 +1,64 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, ShoppingCart, User, Heart } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useCart } from "@/hooks/use-cart"
-import { useWishlist } from "@/hooks/use-wishlist"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, X, ShoppingCart, User, Heart, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/use-cart";
+import { useWishlist } from "@/hooks/use-wishlist";
 
 const navigation = [
   { name: "Home", href: "/home" },
   { name: "Shop", href: "/shop" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
-]
+];
+
+type User = {
+  id: string;
+  email: string;
+};
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const pathname = usePathname()
-  const { getCartItemsCount } = useCart()
-  const { wishlist } = useWishlist()
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const { getCartItemsCount } = useCart();
+  const { wishlist } = useWishlist();
+  const [user, setUser] = useState<User | null>(null);
 
-  const isActive = (href: string) => pathname === href
+  // 🔍 Fetch user details from JWT authentication
+  useEffect(() => {
+  async function fetchUser() {
+    const res = await fetch("/api/auth/me", { method: "GET", credentials: "include" });
+    const data = await res.json();
+    if (res.ok) setUser(data.user);
+  }
+
+  fetchUser();
+
+  // 🔄 Detect Login Events
+  window.addEventListener("storage", fetchUser);
+  return () => window.removeEventListener("storage", fetchUser);
+}, []);
+  const isActive = (href: string) => pathname === href;
+
+  const handleLogout = async () => {
+  try {
+    const res = await fetch("/api/auth/logout", { method: "GET", credentials: "include" });
+
+    if (res.ok) {
+      setUser(null); // ✅ Reset user state
+      localStorage.setItem("refreshUser", Date.now().toString()); // ✅ Trigger header update
+      window.location.reload(); // ✅ Refresh page to reflect changes
+    } else {
+      alert("Logout failed. Please try again.");
+    }
+  } catch (error) {
+    console.error("Logout error:", error);
+    alert("Something went wrong!");
+  }
+};
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50 border-b border-stone-200">
@@ -55,11 +92,7 @@ export function Header() {
           {/* User Actions */}
           <div className="flex items-center space-x-4">
             <Link href="/wishlist" className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative hover:bg-red-50 hover:text-red-600 transition-colors"
-              >
+              <Button variant="ghost" size="sm" className="relative hover:bg-red-50 hover:text-red-600 transition-colors">
                 <Heart className="h-5 w-5" />
                 {wishlist.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -70,11 +103,7 @@ export function Header() {
             </Link>
 
             <Link href="/cart" className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-              >
+              <Button variant="ghost" size="sm" className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                 <ShoppingCart className="h-5 w-5" />
                 {getCartItemsCount() > 0 && (
                   <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -84,30 +113,29 @@ export function Header() {
               </Button>
             </Link>
 
-            <Link href="/account">
-              <Button variant="ghost" size="sm" className="hover:bg-stone-100 transition-colors">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            {/* ✅ Show user's name if logged in */}
+            {user ? (
+              <>
+                <Button variant="ghost" size="sm" className="hover:bg-stone-100 transition-colors">
+                  <User className="h-5 w-5 mr-2" /> {user.email}
+                </Button>
 
-            <Link href="/auth/login">
-              <Button
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 hover:shadow-lg"
-              >
-                Login
-              </Button>
-            </Link>
+                {/* ✅ Logout button */}
+                <Button size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-50" onClick={handleLogout}>
+                  <LogOut className="h-5 w-5 mr-1" /> Logout
+                </Button>
+              </>
+            ) : (
+              <Link href="/auth/login">
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 hover:shadow-lg">
+                  Login
+                </Button>
+              </Link>
+            )}
 
             {/* Mobile menu button */}
             <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                aria-expanded="false"
-                aria-label="Toggle navigation menu"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-expanded="false" aria-label="Toggle navigation menu">
                 {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </Button>
             </div>
@@ -123,9 +151,7 @@ export function Header() {
                   key={item.name}
                   href={item.href}
                   className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${
-                    isActive(item.href)
-                      ? "text-emerald-600 bg-emerald-50"
-                      : "text-stone-700 hover:text-emerald-600 hover:bg-stone-50"
+                    isActive(item.href) ? "text-emerald-600 bg-emerald-50" : "text-stone-700 hover:text-emerald-600 hover:bg-stone-50"
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -137,5 +163,5 @@ export function Header() {
         )}
       </nav>
     </header>
-  )
+  );
 }

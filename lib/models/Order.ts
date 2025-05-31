@@ -9,7 +9,7 @@ interface IOrder extends Document {
   total: number;
   status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
   shippingAddress: {
-    name: string;
+    name: string; 
     email: string;
     mobile: string;
     address: string;
