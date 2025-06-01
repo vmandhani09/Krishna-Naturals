@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react"
 import { useCart } from "@/hooks/use-cart"
+import { CartItem } from "@/types"
+
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
+  const { cart, getCartItemsCount, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart()
 
   if (cart.length === 0) {
     return (
@@ -24,6 +26,7 @@ export default function CartPage() {
       </div>
     )
   }
+  
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -36,7 +39,10 @@ export default function CartPage() {
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {cart.map((item) => (
-            <Card key={`${item.productId}-${item.weight}`}>
+  <Card key={`${item.sku}-${item.weight}`}>
+
+
+
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative w-full sm:w-24 h-32 sm:h-24">
@@ -58,7 +64,7 @@ export default function CartPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeFromCart(item.productId, item.weight)}
+                      onClick={() => removeFromCart(item.sku, item.weight)}
                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -68,7 +74,8 @@ export default function CartPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateQuantity(item.productId, item.weight, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.sku, item.weight, item.quantity - 1)}
+
                         disabled={item.quantity <= 1}
                       >
                         <Minus className="h-3 w-3" />
@@ -77,8 +84,9 @@ export default function CartPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateQuantity(item.productId, item.weight, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.sku, item.weight, item.quantity + 1)}
                       >
+
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>

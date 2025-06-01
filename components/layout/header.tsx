@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect,useMemo} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ShoppingCart, User, Heart, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
+ // ✅ Import fetchCart function
 
 const navigation = [
   { name: "Home", href: "/home" },
@@ -15,50 +16,66 @@ const navigation = [
   { name: "Contact", href: "/contact" },
 ];
 
-type User = {
+type UserType = {
   id: string;
   email: string;
 };
 
+
+
+
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { getCartItemsCount } = useCart();
+  const { cart, getCartItemsCount, fetchCart } = useCart();
   const { wishlist } = useWishlist();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserType | null>(null);
 
-  // 🔍 Fetch user details from JWT authentication
+  // Compute the cart count directly from the cart state.
+  const cartCount = useMemo(() => getCartItemsCount(), [cart, getCartItemsCount]);
+
+  // One useEffect to fetch cart initially and update it when "cartUpdated" fires.
   useEffect(() => {
-  async function fetchUser() {
-    const res = await fetch("/api/auth/me", { method: "GET", credentials: "include" });
-    const data = await res.json();
-    if (res.ok) setUser(data.user);
-  }
+    // Initial fetch when the header mounts.
+    fetchCart();
+    const handleCartUpdate = async () => {
+      await fetchCart();
+    };
+    window.addEventListener("cartUpdated", handleCartUpdate);
+    return () => {
+      window.removeEventListener("cartUpdated", handleCartUpdate);
+    };
+  }, [fetchCart]);
 
-  fetchUser();
+  // Fetch user details from JWT authentication.
+  useEffect(() => {
+    async function fetchUser() {
+      const res = await fetch("/api/auth/me", { method: "GET", credentials: "include" });
+      const data = await res.json();
+      if (res.ok) setUser(data.user);
+    }
+    fetchUser();
+    window.addEventListener("storage", fetchUser);
+    return () => window.removeEventListener("storage", fetchUser);
+  }, []);
 
-  // 🔄 Detect Login Events
-  window.addEventListener("storage", fetchUser);
-  return () => window.removeEventListener("storage", fetchUser);
-}, []);
   const isActive = (href: string) => pathname === href;
 
   const handleLogout = async () => {
-  try {
-    const res = await fetch("/api/auth/logout", { method: "GET", credentials: "include" });
-
-    if (res.ok) {
-      setUser(null); // ✅ Reset user state
-      localStorage.setItem("refreshUser", Date.now().toString()); // ✅ Trigger header update
-      window.location.reload(); // ✅ Refresh page to reflect changes
-    } else {
-      alert("Logout failed. Please try again.");
+    try {
+      const res = await fetch("/api/auth/logout", { method: "GET", credentials: "include" });
+      if (res.ok) {
+        setUser(null);
+        localStorage.setItem("refreshUser", Date.now().toString());
+        window.location.reload();
+      } else {
+        alert("Logout failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Something went wrong!");
     }
-  } catch (error) {
-    console.error("Logout error:", error);
-    alert("Something went wrong!");
-  }
-};
+  };
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50 border-b border-stone-200">
@@ -102,16 +119,20 @@ export function Header() {
               </Button>
             </Link>
 
-            <Link href="/cart" className="relative">
-              <Button variant="ghost" size="sm" className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                <ShoppingCart className="h-5 w-5" />
-                {getCartItemsCount() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {getCartItemsCount()}
-                  </span>
-                )}
-              </Button>
-            </Link>
+         <Link href="/cart" className="relative">
+  <Button
+    variant="ghost"
+    size="sm"
+    className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+  >
+    <ShoppingCart className="h-5 w-5" />
+    {cartCount > 0 && (
+      <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+        {cartCount}
+      </span>
+    )}
+  </Button>
+</Link>
 
             {/* ✅ Show user's name if logged in */}
             {user ? (

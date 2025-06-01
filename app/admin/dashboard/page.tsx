@@ -1,45 +1,61 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Users, Package, ShoppingCart, TrendingUp, DollarSign, AlertCircle, Plus } from 'lucide-react'
-import {  users } from "@/lib/data"
-import { products } from "@/lib/products"
+  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+  import { Badge } from "@/components/ui/badge"
+  import Link from "next/link"
+  import { Button } from "@/components/ui/button"
+  import { Users, Package, ShoppingCart, TrendingUp, DollarSign, AlertCircle, Plus } from 'lucide-react'
+  import Product from "@/lib/models/product"
+  import User from "@/lib/models/user"
+import { dbConnect } from "@/lib/dbConnect"
 
+async function getDashboardStats() {
+  await dbConnect();
 
-export default function AdminDashboardPage() {
-  // Mock stats
-  const stats = {
-    totalUsers: users.length,
+  const totalUsers = await User.countDocuments();
+  const products = await Product.find({});
+
+  return {
+    totalUsers,
     totalProducts: products.length,
+    lowStockProducts: products.filter((p) => p.stockQuantity < 20).length,
+  };
+}
+
+export default async function AdminDashboardPage() {
+  const dynamicStats = await getDashboardStats(); // ✅ Fetch dynamic stats
+
+  // ✅ Keep static values that don’t need to be fetched
+  const staticStats = {
     totalOrders: 156,
     totalRevenue: 125000,
     pendingOrders: 12,
-    lowStockProducts: products.filter((p) => p.stockQuantity < 20).length,
-  }
+  };
+
+  // ✅ Merge static and dynamic data
+  const stats = { ...staticStats, ...dynamicStats };
 
   const recentOrders = [
     { id: "ORD-001", customer: "John Doe", amount: 899, status: "pending" },
     { id: "ORD-002", customer: "Jane Smith", amount: 1299, status: "confirmed" },
     { id: "ORD-003", customer: "Mike Johnson", amount: 649, status: "shipped" },
     { id: "ORD-004", customer: "Sarah Wilson", amount: 999, status: "delivered" },
-  ]
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "shipped":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "confirmed":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "pending":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 text-orange-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
+ 
   return (
     <div className="p-6">
       <div className="mb-8">

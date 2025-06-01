@@ -1,37 +1,75 @@
 "use client"
-
-import { useState } from "react"
+import { Types } from "mongoose"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Users, UserCheck, Calendar } from "lucide-react"
 import { users } from "@/lib/data"
+import mongoose from "mongoose"
+import { User } from "@/types"
 
 export default function AdminUsersPage() {
-  const [searchTerm, setSearchTerm] = useState("")
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+
+
+ useEffect(() => {
+  const fetchUsers = async () => {
+    setIsLoading(true); // ✅ Set loading state before fetching
+
+    try {
+      const response = await fetch("/api/users");
+      const data = await response.json();
+      console.log("Fetched users:", data.users); // ✅ Debugging log
+
+      if (data.users) {
+        setUsers(data.users);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setIsLoading(false); // ✅ Ensure loading state is turned off
+    }
+  };
+
+  fetchUsers();
+}, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-stone-500">Loading users...</p>
+      </div>
+    );
+  }
   const filteredUsers = users.filter(
     (user) =>
       user.role === "user" &&
-      (user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.mobile?.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+      ((user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.mobile && user.mobile.toLowerCase().includes(searchTerm.toLowerCase())))
+  );
 
+
+  const now = new Date();
   const userStats = {
     total: users.filter((u) => u.role === "user").length,
     thisMonth: users.filter((u) => {
-      const now = new Date()
-      const userDate = new Date(u.createdAt)
-      return u.role === "user" && userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear()
+      const userDate = new Date(u.createdAt);
+      return u.role === "user" && userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
     }).length,
     thisWeek: users.filter((u) => {
-      const now = new Date()
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      return u.role === "user" && new Date(u.createdAt) >= weekAgo
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return u.role === "user" && new Date(u.createdAt) >= weekAgo;
     }).length,
-  }
+  };
+
+
 
   return (
     <div className="p-6 space-y-6">
@@ -118,22 +156,17 @@ export default function AdminUsersPage() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="font-medium text-stone-900">{user.name}</div>
-                    </TableCell>
-                    <TableCell className="text-stone-600">{user.email}</TableCell>
-                    <TableCell className="text-stone-600">{user.mobile || "N/A"}</TableCell>
-                    <TableCell>
+                  <TableRow key={user._id.toString()}>{/* ✅ Safe conversion */}<TableCell>
+                      <div className="font-medium text-stone-900">{user.name || "No Name"}</div>
+                    </TableCell><TableCell className="text-stone-600">{user.email}</TableCell><TableCell className="text-stone-600">{user.mobile || "N/A"}</TableCell><TableCell>
                       <Badge variant="secondary" className="capitalize">
                         {user.role}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-stone-600">{user.createdAt.toLocaleDateString()}</TableCell>
-                    <TableCell>
+                    </TableCell><TableCell className="text-stone-600">
+                      {new Date(user.createdAt).toLocaleDateString()} {/* ✅ Converts string to Date */}
+                    </TableCell><TableCell>
                       <Badge className="bg-green-100 text-green-800">Active</Badge>
-                    </TableCell>
-                  </TableRow>
+                    </TableCell></TableRow>
                 ))}
               </TableBody>
             </Table>

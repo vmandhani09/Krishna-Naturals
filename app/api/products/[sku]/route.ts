@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import Product from "@/lib/models/product";
 import { dbConnect } from "@/lib/dbConnect";
+// ✅ Import Product model
 
-export async function GET(req: NextRequest, { params }: { params: { sku: string } }) {
+export async function GET(req: NextRequest, context: { params: { sku: string } }) {
   try {
     await dbConnect();
-    const { sku } = params; // ✅ Fix context handling
+    const { sku } = await context.params; // ✅ Correctly extract params
 
     if (!sku) {
-      console.error("❌ SKU is missing in request");
-      return NextResponse.json({ error: "Missing SKU parameter" }, { status: 400 });
+      console.error("❌ SKU/Slug missing in request");
+      return NextResponse.json({ error: "Missing SKU or Slug parameter" }, { status: 400 });
     }
 
-    console.log(`🔍 Fetching product with SKU: ${sku}`);
-    const product = await Product.findOne({ sku }).lean(); // ✅ Optimize with `lean()`
+    console.log(`🔍 Fetching product with SKU or Slug: ${sku}`);
+
+    // ✅ Allow searching by either SKU or Slug
+    const product = await Product.findOne({ $or: [{ sku }, { slug: sku }] }).lean();
 
     if (!product) {
-      console.error(`❌ Product not found for SKU: ${sku}`);
+      console.error(`❌ Product not found for SKU/Slug: ${sku}`);
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
@@ -26,7 +29,6 @@ export async function GET(req: NextRequest, { params }: { params: { sku: string 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
 export async function PUT(req: NextRequest, { params }: { params: { sku: string } }) {
   try {
     await dbConnect();

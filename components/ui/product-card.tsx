@@ -107,7 +107,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
-        <Link href={`/product/${product.slug}`} className="w-full">
+        <Link href={`/product/${product.slug}`} onClick={() => console.log("Navigating to:", product.slug)}>
           <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 hover:shadow-lg">
             <ShoppingCart className="h-4 w-4 mr-2" />
             Select Options

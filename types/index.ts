@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 export interface Product {
   name: string
   slug: string
@@ -23,8 +24,9 @@ export interface Review {
   comment: string
   date: string
 }
+
 export interface User {
-  id: string; // ✅ Added ID field for consistency
+  _id: Types.ObjectId | string;// ✅ Added ID field for consistency
   name: string;
   email: string;
   password: string;
@@ -34,13 +36,14 @@ export interface User {
   cart: string[]; // ✅ Updated to store ObjectId as a string array
   wishlist: string[]; // ✅ Updated to store ObjectId as a string array
 }
+
 export interface CartItem {
-  productId: string
-  productName: string
-  productImage: string
-  weight: string
-  price: number
-  quantity: number
+  sku: string;
+  productName: string;
+  productImage: string;
+  weight: string;
+  price: number;
+  quantity: number;
 }
 
 export interface Order {

@@ -3,7 +3,7 @@ import type { Product, User } from "@/types"
 
 export const users: User[] = [
   {
-    id: "1",
+
     name: "Priya Sharma",
     email: "priya@example.com",
     password: "password123",
