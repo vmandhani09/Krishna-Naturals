@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 interface IProduct extends Document {
   name: string;
@@ -7,14 +7,14 @@ interface IProduct extends Document {
   description: string;
   category: string;
   sku: string;
-  stockQuantity: number;
   discountPrice?: number;
   tags?: string;
   brand?: string;
-  weights: { label: string; price: number }[];
+  weights: { label: string; price: number; quantity: number }[]; // ✅ Quantity per weight
   reviews: mongoose.Types.ObjectId[];
   isBranded: boolean;
   averageRating: number;
+  isFeatured: boolean; // ✅ Featured flag added
 }
 
 const ProductSchema = new Schema<IProduct>({
@@ -24,14 +24,14 @@ const ProductSchema = new Schema<IProduct>({
   description: { type: String, required: true },
   category: { type: String, required: true },
   sku: { type: String, required: true, unique: true },
-  stockQuantity: { type: Number, required: true, default: 0 },
   discountPrice: { type: Number },
   brand: { type: String },
   tags: { type: String },
-  weights: [{ label: String, price: Number }],
-  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }], // **Linked reviews**
+  weights: [{ label: String, price: Number, quantity: Number }], // ✅ Updated structure
+  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }], // Linked reviews
   isBranded: { type: Boolean, required: true, default: true },
   averageRating: { type: Number, default: 0 },
+  isFeatured: { type: Boolean, required: true, default: false }, // ✅ Added featured flag
 });
 
 export default mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);

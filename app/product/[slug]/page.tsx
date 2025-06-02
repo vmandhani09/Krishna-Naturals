@@ -366,7 +366,7 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">Stock:</dt>
-                <dd className="font-medium text-emerald-600">{product.stockQuantity} units</dd>
+                <dd className="font-medium text-emerald-600">{product.weights.reduce((total, weight) => total + weight.quantity, 0)} units</dd>
               </div>
               {product.tags && (
                 <div className="flex justify-between">

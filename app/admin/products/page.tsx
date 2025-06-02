@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Search, MoreHorizontal, Edit, Trash2, AlertTriangle, Package } from "lucide-react"
-import { products } from "@/lib/products"
 
 import { Product } from "@/types";
 
@@ -42,28 +41,43 @@ export default function AdminProductsPage() {
       product.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const lowStockProducts = products.filter((p) => p.stockQuantity < 20);
-const handleDeleteProduct = async (productSku: string) => {
-  if (confirm("Are you sure you want to delete this product?")) {
-    try {
-      const response = await fetch(`/api/products/${productSku}`, { method: "DELETE" }); // ✅ Using SKU in the API route
-      if (!response.ok) throw new Error("Failed to delete product");
+  const lowStockProducts = products.filter((p) => {
+    const totalStock = p.weights.reduce((sum, w) => sum + w.quantity, 0); // ✅ Sum all weight quantities
+    return totalStock < 20; // ✅ Use total stock for filtering
+  });
 
-      alert("Product deleted successfully!");
-      setProducts(products.filter((product) => product.sku !== productSku)); // ✅ Filtering based on SKU
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      alert("Failed to delete product. Please try again.");
+  const handleDeleteProduct = async (productSku: string) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      try {
+        const response = await fetch(`/api/products/${productSku}`, { method: "DELETE" }); // ✅ Using SKU in the API route
+        if (!response.ok) throw new Error("Failed to delete product");
+
+        alert("Product deleted successfully!");
+        setProducts(products.filter((product) => product.sku !== productSku)); // ✅ Filtering based on SKU
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        alert("Failed to delete product. Please try again.");
+      }
     }
-  }
-};
+  };
+  const getStockStatus = (weights: any) => {
+    if (!Array.isArray(weights) || weights.length === 0) {
+      console.warn("❌ Missing or invalid weights:", weights); // ✅ Debugging step
+      return { label: "Out of Stock", color: "bg-red-100 text-red-800" };
+    }
 
-  const getStockStatus = (quantity: number) => {
-    if (quantity === 0) return { label: "Out of Stock", color: "bg-red-100 text-red-800" };
-    if (quantity < 20) return { label: "Low Stock", color: "bg-yellow-100 text-yellow-800" };
+    const totalStock = weights.reduce((sum, w) => {
+      const qty = Number(w.quantity) || 0;
+      console.log(`🔍 Weight: ${w.label}, Quantity: ${qty}`); // ✅ Debugging
+      return sum + qty;
+    }, 0);
+
+    console.log(`✅ Total Stock: ${totalStock}`); // ✅ Debugging step
+
+    if (totalStock === 0) return { label: "Out of Stock", color: "bg-red-100 text-red-800" };
+    if (totalStock < 20) return { label: "Low Stock", color: "bg-yellow-100 text-yellow-800" };
     return { label: "In Stock", color: "bg-green-100 text-green-800" };
   };
-
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -105,7 +119,7 @@ const handleDeleteProduct = async (productSku: string) => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-stone-600">In Stock</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {products.filter((p) => p.stockQuantity > 20).length}
+                  {products.filter((p) => p.weights.reduce((total, w) => total + (w.quantity || 0), 0) > 20).length}
                 </p>
               </div>
             </div>
@@ -135,7 +149,7 @@ const handleDeleteProduct = async (productSku: string) => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-stone-600">Out of Stock</p>
                 <p className="text-2xl font-bold text-stone-900">
-                  {products.filter((p) => p.stockQuantity === 0).length}
+                  {products.filter((p) => p.weights.reduce((total, w) => total + (w.quantity || 0), 0) === 0).length}
                 </p>
               </div>
             </div>
@@ -177,7 +191,7 @@ const handleDeleteProduct = async (productSku: string) => {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => {
-                  const stockStatus = getStockStatus(product.stockQuantity)
+                  const stockStatus = getStockStatus(product.weights.reduce((total, w) => total + (w.quantity || 0), 0))
                   const minPrice = Math.min(...product.weights.map((w) => w.price))
                   const maxPrice = Math.max(...product.weights.map((w) => w.price))
 
@@ -206,7 +220,7 @@ const handleDeleteProduct = async (productSku: string) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{product.stockQuantity} units</div>
+                        <div className="font-medium">{product.weights.reduce((total, w) => total + (w.quantity || 0), 0)} units</div>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">
@@ -214,8 +228,11 @@ const handleDeleteProduct = async (productSku: string) => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={stockStatus.color}>{stockStatus.label}</Badge>
+                        <Badge className={getStockStatus(product.weights).color}>
+                          {getStockStatus(product.weights).label}
+                        </Badge>
                       </TableCell>
+
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

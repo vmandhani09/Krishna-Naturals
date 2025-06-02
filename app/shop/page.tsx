@@ -11,7 +11,7 @@ import { RangeSlider } from "@/components/ui/range-slider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import { categories } from "@/lib/data"
-import product from "@/lib/products"
+
 import { Product } from "@/types";
 
 export default function ShopPage() {

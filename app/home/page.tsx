@@ -1,3 +1,4 @@
+"use client"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,9 +6,36 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ProductCard } from "@/components/ui/product-card"
 import { Star, Truck, Shield, Clock } from "lucide-react"
 import { categories } from "@/lib/data"
-import products from "@/lib/products"
+import { useEffect, useState } from "react"
+import { Product } from "@/types"
+
+
+
 export default function HomePage() {
-  const featuredProducts = products.slice(0, 4)
+ const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await fetch("/api/products"); // ✅ Fetch from database
+        const data: Product[] = await response.json();
+
+        // Filter only featured products
+        const featured = data.filter((product) => product.isFeatured);
+
+        setFeaturedProducts(featured); // ✅ Store only featured products
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, []);
+
+
 
   return (
     <div className="space-y-16">

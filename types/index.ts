@@ -1,19 +1,19 @@
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 export interface Product {
-  name: string
-  slug: string
-  image: string
-  description: string
-  category: string
-  sku: string
-  stockQuantity: number
-  discountPrice?: number
-  tags?: string
-  brand?: string
-  weights: { label: string; price: number }[]
-  reviews: Review[]
-  isBranded: boolean
-  averageRating: number
+  name: string;
+  slug: string;
+  image: string;
+  description: string;
+  category: string;
+  sku: string;
+  discountPrice?: number;
+  tags?: string;
+  brand?: string;
+  weights: { label: string; price: number; quantity: number }[]; // ✅ Quantity per weight
+  reviews: mongoose.Types.ObjectId[];
+  isBranded: boolean;
+  averageRating: number;
+  isFeatured: boolean; // ✅ Featured flag added
 }
 
 export interface Review {
