@@ -108,8 +108,17 @@ export default function ContactPage() {
               <CardTitle>Find Us</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500">Google Maps Integration</p>
+              <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d60304.78536754498!2d77.28392466953126!3d19.149328549817582!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bd1d6383bb5a859%3A0x4566f2e227148be!2sShri%20Krishna%20Trading!5e0!3m2!1sen!2sin!4v1749375062631!5m2!1sen!2sin"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Google Map"
+                ></iframe>
               </div>
             </CardContent>
           </Card>

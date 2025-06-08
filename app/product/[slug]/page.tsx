@@ -1,3 +1,5 @@
+// app/products/[slug]/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,145 +10,65 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ProductCard } from "@/components/ui/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ShoppingCart, Star, Truck, Shield, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils"; // ✅ Ensure cn is imported
+import { cn } from "@/lib/utils";
 import { Product } from "@/types";
 import { useCart } from "@/hooks/use-cart";
-
+import { useWishlist } from "@/hooks/use-wishlist";
 
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-
   const [product, setProduct] = useState<Product | null>(null);
-
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInWishlist, setIsInWishlist] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const { cart, addToCart, getCartItemsCount } = useCart(); // ✅ Ensure useCart is used
-  const cartCount = getCartItemsCount();
+  const { addToCart } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+
   const [selectedWeight, setSelectedWeight] = useState("");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
-
-  // ✅ Fetch product dynamically from API
-  async function fetchProduct() {
-    try {
-      setIsLoading(true); // ✅ Show loading indicator while fetching
-      console.log(`🔍 Requesting: /api/products/${slug}`);
-      const response = await fetch(`/api/products/${slug}`);
-      const data = await response.json();
-
-      console.log("🔍 API Response:", data);
-
-      if (!response.ok || !data) throw new Error("Product not found");
-
-      setProduct(data);
-    } catch (error) {
-      console.error("❌ Error fetching product:", error);
-      setProduct(null);
-    } finally {
-      setIsLoading(false); // ✅ Hide loading indicator when done
-    }
-  }
-
-  // ✅ Detect user authentication & check wishlist status
   useEffect(() => {
-    const userToken = localStorage.getItem("userToken"); // Replace with actual auth logic
-    setIsLoggedIn(!!userToken);
+    const fetchProduct = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/products/${slug}`);
+        const data = await response.json();
 
-    if (userToken) {
-      fetch("/api/user/wishlist", {
-        method: "GET",
-        headers: { "user-id": userToken },
-      })
-        .then((res) => res.json())
-        .then((data) => setIsInWishlist(data.wishlist.includes(product?.sku)))
-        .catch((error) => console.error("Error fetching wishlist:", error));
-    } else {
-      const guestWishlist = JSON.parse(localStorage.getItem("guestWishlist") ?? "[]");
-      setIsInWishlist(guestWishlist.includes(product?.sku));
-    }
-  }, [product]);
-  useEffect(() => {
+        if (!response.ok || !data) throw new Error("Product not found");
+
+        setProduct(data);
+
+        // Fetch related products (optional, adjust API as needed)
+        if (data.category) {
+          const relRes = await fetch(`/api/products?category=${encodeURIComponent(data.category)}&exclude=${data._id}`);
+          if (relRes.ok) {
+            const relData = await relRes.json();
+            setRelatedProducts(Array.isArray(relData.products) ? relData.products : []);
+          } else {
+            setRelatedProducts([]);
+          }
+        } else {
+          setRelatedProducts([]);
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        setProduct(null);
+        setRelatedProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchProduct();
   }, [slug]);
-  // ✅ Runs when `product` changes
-  // ✅ Set default weight on product load
+
   useEffect(() => {
     if (product?.weights?.length) {
       setSelectedWeight(product.weights[0].label);
     }
   }, [product]);
-
-
-
-  // ✅ Handle wishlist toggle
-  // Toggle wishlist (add if not present, remove if already there)
-  const toggleWishlist = async () => {
-    if (!product) return;
-    try {
-      if (isLoggedIn) {
-        const response = await fetch("/api/user/wishlist", {
-          method: isInWishlist ? "DELETE" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sku: product.sku }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Failed to update wishlist");
-        setIsInWishlist((prev) => !prev);
-        window.dispatchEvent(new Event("wishlistUpdated"));
-      } else {
-        const guestWishlist = JSON.parse(localStorage.getItem("guestWishlist") ?? "[]");
-        const updatedWishlist = isInWishlist
-          ? guestWishlist.filter((id: string) => id !== product.sku)
-          : [...guestWishlist, product.sku];
-        localStorage.setItem("guestWishlist", JSON.stringify(updatedWishlist));
-        setIsInWishlist((prev) => !prev);
-        window.dispatchEvent(new Event("wishlistUpdated"));
-      }
-    } catch (error) {
-      console.error("Wishlist update error:", error);
-    }
-  };
-
-
-
-
-
-
-
-  const selectedWeightOption = product?.weights.find((w) => w.label === selectedWeight);
-  // ✅ Handle Add to Cart Function
-  const handleAddToCart = async () => {
-    if (!product || !selectedWeight) return;
-
-    setIsLoading(true);
-
-    try {
-      const selectedWeightOption = product.weights.find((w) => w.label === selectedWeight);
-      if (!selectedWeightOption) throw new Error("Invalid weight option");
-
-      addToCart({
-        sku: product.sku,
-        productName: product.name,
-        productImage: product.image,
-        weight: selectedWeight,
-        price: selectedWeightOption.price,
-        quantity,
-      });
-
-      window.dispatchEvent(new Event("cartUpdated")); // ✅ Ensure real-time UI update
-    } catch (error) {
-      console.error("Error adding product to cart:", error);
-      alert("Failed to add product to cart. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
 
   if (isLoading) {
     return (
@@ -166,6 +88,31 @@ export default function ProductDetailPage() {
     );
   }
 
+  const selectedWeightOption = product.weights.find(
+    (w) => w.label === selectedWeight
+  );
+
+  const inWishlist = isInWishlist(String(product._id));
+
+  const handleWishlistToggle = () => {
+    if (!product) return;
+    if (inWishlist) {
+      removeFromWishlist(String(product._id));
+    } else {
+      addToWishlist(product);
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (!product || !selectedWeightOption) return;
+    addToCart(
+      String(product._id),
+      selectedWeightOption.label,
+      quantity
+    );
+    setShowSuccessMessage(true);
+    setTimeout(() => setShowSuccessMessage(false), 2000);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -201,20 +148,19 @@ export default function ProductDetailPage() {
               className="w-full h-96 lg:h-[500px] object-cover rounded-lg"
             />
             <button
-              onClick={toggleWishlist}
+              onClick={handleWishlistToggle}
               className={cn(
                 "absolute top-3 right-3 p-2 rounded-full shadow-lg transition-all duration-300",
                 "opacity-0 group-hover:opacity-100 hover:scale-110",
-                isInWishlist
+                inWishlist
                   ? "bg-red-500 text-white"
                   : "bg-white text-stone-600 hover:bg-red-50 hover:text-red-500"
               )}
               aria-label="Add to wishlist"
             >
-              <Heart className={cn("h-4 w-4", isInWishlist && "fill-current")} />
+              <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
             </button>
           </div>
-
         </div>
 
         {/* Product Info */}
@@ -268,70 +214,48 @@ export default function ProductDetailPage() {
             )}
           </div>
           {/* Quantity and Add to Cart */}
-{/* Quantity and Add to Cart */}
-<div className="space-y-4">
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
-    <Select
-      value={quantity.toString()}
-      onValueChange={(value) => setQuantity(Number.parseInt(value))}
-    >
-      <SelectTrigger className="w-24">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {[...Array(10)].map((_, i) => (
-          <SelectItem key={i + 1} value={(i + 1).toString()}>
-            {i + 1}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+              <Select
+                value={quantity.toString()}
+                onValueChange={(value) => setQuantity(Number.parseInt(value))}
+              >
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...Array(10)].map((_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                      {i + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-  <div className="flex space-x-4">
-    <Button
-      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-      onClick={() => {
-        const selectedWeightOption = product.weights.find((w) => w.label === selectedWeight);
-        if (!selectedWeightOption) {
-          console.error("❌ Invalid weight selection");
-          return;
-        }
+            <div className="flex space-x-4">
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleAddToCart}
+                disabled={!selectedWeight}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Add to Cart
+              </Button>
 
-        addToCart({
-          sku: product.sku,
-          productName: product.name,
-          productImage: product.image,
-          weight: selectedWeightOption.label, // ✅ Ensure correct weight label
-          price: selectedWeightOption.price, // ✅ Correct price mapping
-          quantity,
-        });
+              <Button variant="outline" size="icon" onClick={handleWishlistToggle}>
+                <Heart className={`h-4 w-4 ${inWishlist ? "text-red-500" : ""}`} />
+              </Button>
+            </div>
 
-        setShowSuccessMessage(true); // ✅ Show success message
-        window.dispatchEvent(new Event("cartUpdated")); // ✅ Ensure real-time UI updates
-
-        // Auto-hide message after 3 seconds
-        setTimeout(() => setShowSuccessMessage(false), 3000);
-      }}
-      disabled={!selectedWeight}
-    >
-      <ShoppingCart className="h-4 w-4 mr-2" />
-      Add to Cart
-    </Button>
-
-    <Button variant="outline" size="icon" onClick={toggleWishlist}>
-      <Heart className={`h-4 w-4 ${isInWishlist ? "text-red-500" : ""}`} />
-    </Button>
-  </div>
-
-  {/* ✅ Success Message Below the Button */}
-  {showSuccessMessage && (
-    <div className="text-green-600 font-medium mt-2">
-      ✅ {product.name} ({selectedWeight}) added to cart successfully!
-    </div>
-  )}
-</div>
+            {/* ✅ Success Message Below the Button */}
+            {showSuccessMessage && (
+              <div className="text-green-600 font-medium mt-2">
+                ✅ {product.name} ({selectedWeight}) added to cart successfully!
+              </div>
+            )}
+          </div>
 
           {/* Product Features */}
           <div className="grid grid-cols-3 gap-4 pt-6 border-t">
@@ -391,6 +315,6 @@ export default function ProductDetailPage() {
         </section>
       )}
     </div>
-  )
+  );
 }
 

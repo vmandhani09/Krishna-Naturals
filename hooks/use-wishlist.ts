@@ -3,31 +3,64 @@
 import { useState, useEffect, useCallback } from "react";
 import { Product } from "@/types";
 
+function isValidToken(token: string | null): boolean {
+  return !!token && token !== "undefined" && token !== "null";
+}
+
 export function useWishlist() {
   const [wishlist, setWishlist] = useState<Product[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 🔄 Fetch wishlist (on mount or update)
+  // Fetch wishlist products by IDs
+  const fetchProductsByIds = async (ids: string[]) => {
+    if (!ids || ids.length === 0) {
+      setWishlist([]);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/products/by-ids", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch products by IDs");
+
+      const data = await response.json();
+      setWishlist(data.products || []);
+    } catch (error) {
+      console.error("Error fetching products by IDs:", error);
+      setWishlist([]);
+    }
+  };
+
+  // Fetch wishlist based on login state
   const fetchWishlist = useCallback(async () => {
-    const userToken = localStorage.getItem("userToken");
+    try {
+      const userToken = localStorage.getItem("userToken");
+      setIsLoggedIn(isValidToken(userToken));
 
-    if (userToken) {
-      try {
-        const response = await fetch(`/api/wishlist/${userToken}`, {
+      if (isValidToken(userToken)) {
+        // Logged-in: get wishlist IDs from API
+        const res = await fetch("/api/user/wishlist", {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${userToken}` },
         });
-        if (response.ok) {
-          const data = await response.json();
-          setWishlist(data);
-        } else {
-          console.error("Failed to fetch wishlist from API");
-        }
-      } catch (error) {
-        console.error("Error fetching wishlist:", error);
+
+        if (!res.ok) throw new Error("Failed to fetch user wishlist");
+
+        const data = await res.json();
+        const ids: string[] = data.wishlist || [];
+        await fetchProductsByIds(ids);
+      } else {
+        // Guest: get IDs from localStorage
+        const guestWishlistIds: string[] = JSON.parse(localStorage.getItem("guestWishlistIds") || "[]");
+        await fetchProductsByIds(guestWishlistIds);
       }
-    } else {
-      const guestWishlist = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
-      setWishlist(guestWishlist);
+    } catch (error) {
+      console.error("Error fetching wishlist:", error);
+      setWishlist([]);
     }
   }, []);
 
@@ -37,67 +70,94 @@ export function useWishlist() {
     return () => window.removeEventListener("wishlistUpdated", fetchWishlist);
   }, [fetchWishlist]);
 
-  // ➕ Add to Wishlist
+  // Add product to wishlist
   const addToWishlist = async (product: Product) => {
+    const productId = product._id;
+    if (!productId) return console.error("Product missing _id");
+
     const userToken = localStorage.getItem("userToken");
 
-    if (userToken) {
-      try {
-        await fetch("/api/wishlist", {
+    try {
+      if (isValidToken(userToken)) {
+        const res = await fetch("/api/user/wishlist", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: userToken, ...product }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+          body: JSON.stringify({ productId: String(productId) }), 
         });
-        await fetchWishlist();
-        window.dispatchEvent(new Event("wishlistUpdated"));
-      } catch (error) {
-        console.error("Error adding to wishlist:", error);
+        if (!res.ok) throw new Error("Failed to add to wishlist");
+      } else {
+        let guestWishlistIds: string[] = JSON.parse(localStorage.getItem("guestWishlistIds") || "[]");
+        if (!guestWishlistIds.includes(String(productId))) {
+          guestWishlistIds.push(String(productId));
+          localStorage.setItem("guestWishlistIds", JSON.stringify(guestWishlistIds));
+        }
       }
-    } else {
-      let guestWishlist: Product[] = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
-      const exists = guestWishlist.some((item) => item.sku === product.sku);
-      if (!exists) {
-        guestWishlist.push(product);
-        localStorage.setItem("guestWishlist", JSON.stringify(guestWishlist));
-        setWishlist(guestWishlist);
-        window.dispatchEvent(new Event("wishlistUpdated"));
-      }
+
+      await fetchWishlist();
+      window.dispatchEvent(new Event("wishlistUpdated"));
+    } catch (error) {
+      console.error("Error adding to wishlist:", error);
     }
   };
 
-  // ❌ Remove from Wishlist
-  const removeFromWishlist = async (sku: string) => {
+  // Remove product from wishlist
+  const removeFromWishlist = async (productId: string) => {
     const userToken = localStorage.getItem("userToken");
 
-    if (userToken) {
-      try {
-        await fetch(`/api/wishlist/remove`, {
+    try {
+      if (isValidToken(userToken)) {
+        const res = await fetch("/api/user/wishlist", {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: userToken, sku }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+          body: JSON.stringify({ productId }), // <-- FIXED
         });
-        await fetchWishlist();
-        window.dispatchEvent(new Event("wishlistUpdated"));
-      } catch (error) {
-        console.error("Error removing from wishlist:", error);
+        if (!res.ok) throw new Error("Failed to remove from wishlist");
+      } else {
+        let guestWishlistIds: string[] = JSON.parse(localStorage.getItem("guestWishlistIds") || "[]");
+        guestWishlistIds = guestWishlistIds.filter((id) => id !== productId);
+        localStorage.setItem("guestWishlistIds", JSON.stringify(guestWishlistIds));
       }
-    } else {
-      let guestWishlist: Product[] = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
-      const updated = guestWishlist.filter((item) => item.sku !== sku);
-      localStorage.setItem("guestWishlist", JSON.stringify(updated));
-      setWishlist(updated);
+
+      await fetchWishlist();
       window.dispatchEvent(new Event("wishlistUpdated"));
+    } catch (error) {
+      console.error("Error removing from wishlist:", error);
     }
   };
+const syncLocalWishlistToDB = async (userToken: string) => {
+  const localWishlist: { productId: string }[] = JSON.parse(localStorage.getItem("guestWishlistIds") || "[]");
+  if (!localWishlist.length) return;
 
-  // 🔢 Count
-  const getWishlistCount = useCallback(() => wishlist.length, [wishlist]);
+  try {
+    for (const item of localWishlist) {
+      await fetch("/api/user/wishlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ productId: item.productId }),
+      });
+    }
+    localStorage.removeItem("guestWishlistIds");
+    window.dispatchEvent(new Event("wishlistUpdated"));
+  } catch (err) {
+    console.error("Wishlist sync failed", err);
+  }
+};
+  // Check if product is in wishlist
+  const isInWishlist = (productId: string): boolean => {
+    return wishlist?.some((item) => item._id === productId) ?? false;
+  };
 
   return {
+    syncLocalWishlistToDB,
     wishlist,
+    isLoggedIn,
     fetchWishlist,
     addToWishlist,
     removeFromWishlist,
-    getWishlistCount,
+    isInWishlist,
+    wishlistCount: wishlist.length,
   };
 }

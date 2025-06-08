@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { syncLocalDataToDB } from "@/lib/syncLocalData";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,23 +9,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useCart } from "@/hooks/use-cart"
+import { useWishlist } from "@/hooks/use-wishlist";
+
+
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "", rememberMe: false });
+  const { syncLocalCartToDB } = useCart();
+  const { syncLocalWishlistToDB } = useWishlist();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null); // ✅ Track logged-in user state
 
-  // useEffect(() => {
-  //   // 🔍 Check for existing JWT in cookies
-  //   async function fetchUser() {
-  //     const res = await fetch("/api/auth/me", { method: "GET" });
-  //     const data = await res.json();
-  //     if (res.ok) setUser(data.user);
-  //   }
-  //   fetchUser();
-  // }, []);
+  useEffect(() => {
+    async function syncWishlist() {
+      const localWishlist = localStorage.getItem("wishlist");
+      if (!localWishlist) return;
+
+      try {
+        const productIds = JSON.parse(localWishlist);
+        if (!Array.isArray(productIds) || productIds.length === 0) return;
+
+        const response = await fetch("/api/user/wishlist", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productIds }),
+        });
+
+        if (response.ok) {
+          localStorage.removeItem("wishlist"); // Clear local wishlist after sync
+          const data = await response.json();
+          console.log("Wishlist synced:", data.wishlist);
+        } else {
+          console.error("Wishlist sync failed");
+        }
+      } catch (error) {
+        console.error("Error syncing wishlist:", error);
+      }
+    }
+
+    if (user) {
+      syncWishlist();
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -32,43 +61,41 @@ export default function LoginPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
+    e.preventDefault();
+    setIsLoading(true);
 
-  try {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: formData.email, password: formData.password }),
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
 
-    // 🔍 Ensure response is valid JSON
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Login API error:", errorText); // Logs raw server error if not JSON
-      alert("Login failed. Please try again.");
-      return;
+      if (!response.ok) {
+        alert("Login failed. Please try again.");
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result.token) {
+        document.cookie = `token=${result.token}; path=/; Secure;`; // ✅ Store token in cookie
+        localStorage.setItem("userToken", result.token); // ✅ Store token in localStorage
+
+        setUser(result.user);
+        await syncLocalCartToDB(result.tolen);
+        await syncLocalWishlistToDB(result.token);
+        router.push("/home");
+      } else {
+        alert(result.error || "Invalid credential");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Something went wrong.");
+    } finally {
+      setIsLoading(false);
     }
-
-    const result = await response.json();
-
-    if (result.token) {
-      document.cookie = `token=${result.token}; path=/; Secure;`;
-      alert("Login successful!");
-      localStorage.setItem("refreshUser", Date.now().toString()); // 🔄 Force header refresh
-      router.push("/home");
-    } else {
-      alert(result.error || "Invalid credential");
-    }
-
-  } catch (error) {
-    console.error("Login error:", error);
-    alert("Something went wrong. Please check your API connection.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
@@ -96,6 +123,7 @@ export default function LoginPage() {
                     className="pl-10"
                     placeholder="Enter your email"
                     required
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -113,6 +141,7 @@ export default function LoginPage() {
                     className="pl-10 pr-10"
                     placeholder="Enter your password"
                     required
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"

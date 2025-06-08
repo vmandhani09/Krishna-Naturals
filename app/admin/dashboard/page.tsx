@@ -1,4 +1,4 @@
-  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
   import { Badge } from "@/components/ui/badge"
   import Link from "next/link"
   import { Button } from "@/components/ui/button"
@@ -6,6 +6,9 @@
   import Product from "@/lib/models/product"
   import User from "@/lib/models/user"
 import { dbConnect } from "@/lib/dbConnect"
+import { requireAdmin } from "@/lib/admin-auth"
+
+const SECRET_KEY = process.env.JWT_SECRET || "your-secret-key";
 
 async function getDashboardStats() {
   await dbConnect();
@@ -21,6 +24,8 @@ async function getDashboardStats() {
 }
 
 export default async function AdminDashboardPage() {
+  await requireAdmin(); // ✅ Ensure admin authentication
+
   const dynamicStats = await getDashboardStats(); // ✅ Fetch dynamic stats
 
   // ✅ Keep static values that don’t need to be fetched

@@ -26,27 +26,7 @@ export default function AboutPage() {
     },
   ]
 
-  const team = [
-    {
-      name: "Rajesh Sharma",
-      role: "Founder & CEO",
-      image: "/placeholder.svg?height=300&width=300",
-      description: "20+ years experience in organic food industry",
-    },
-    {
-      name: "Priya Patel",
-      role: "Quality Manager",
-      image: "/placeholder.svg?height=300&width=300",
-      description: "Expert in food safety and quality assurance",
-    },
-    {
-      name: "Amit Kumar",
-      role: "Operations Head",
-      image: "/placeholder.svg?height=300&width=300",
-      description: "Ensures smooth supply chain and logistics",
-    },
-  ]
-
+  
   return (
     <div className="space-y-16">
       {/* Hero Section */}
@@ -157,36 +137,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team Section */}
-      <section className="bg-stone-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-stone-800 mb-4">Meet Our Team</h2>
-            <p className="text-stone-600 text-lg">The passionate people behind Krishna Naturals</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {team.map((member, index) => (
-              <Card key={index} className="text-center border-none shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="p-6">
-                  <div className="relative w-32 h-32 mx-auto mb-4">
-                    <Image
-                      src={member.image || "/placeholder.svg"}
-                      alt={member.name}
-                      fill
-                      className="object-cover rounded-full"
-                    />
-                  </div>
-                  <h3 className="text-xl font-semibold text-stone-800 mb-1">{member.name}</h3>
-                  <p className="text-emerald-600 font-medium mb-3">{member.role}</p>
-                  <p className="text-stone-600 text-sm">{member.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
+     
       {/* Stats Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">

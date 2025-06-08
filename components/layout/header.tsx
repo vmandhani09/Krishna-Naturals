@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect,useMemo} from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ShoppingCart, User, Heart, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
- // ✅ Import fetchCart function
 
 const navigation = [
   { name: "Home", href: "/home" },
@@ -21,15 +20,31 @@ type UserType = {
   email: string;
 };
 
+function useUserFromToken() {
+  const [user, setUser] = useState<UserType | null>(null);
 
+  useEffect(() => {
+    const token = localStorage.getItem("userToken");
+    if (!token) return;
 
+    fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.user) setUser(data.user);
+      });
+  }, []);
+
+  return user;
+}
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { cart, getCartItemsCount, fetchCart } = useCart();
   const { wishlist } = useWishlist();
-  const [user, setUser] = useState<UserType | null>(null);
+  const user = useUserFromToken();
 
   // Compute the cart count directly from the cart state.
   const cartCount = useMemo(() => getCartItemsCount(), [cart, getCartItemsCount]);
@@ -47,25 +62,16 @@ export function Header() {
     };
   }, [fetchCart]);
 
-  // Fetch user details from JWT authentication.
-  useEffect(() => {
-    async function fetchUser() {
-      const res = await fetch("/api/auth/me", { method: "GET", credentials: "include" });
-      const data = await res.json();
-      if (res.ok) setUser(data.user);
-    }
-    fetchUser();
-    window.addEventListener("storage", fetchUser);
-    return () => window.removeEventListener("storage", fetchUser);
-  }, []);
-
   const isActive = (href: string) => pathname === href;
 
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/auth/logout", { method: "GET", credentials: "include" });
       if (res.ok) {
-        setUser(null);
+        // Remove userToken from localStorage
+        localStorage.removeItem("userToken");
+        // Remove token cookie (set expiry in the past)
+        document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure;";
         localStorage.setItem("refreshUser", Date.now().toString());
         window.location.reload();
       } else {
@@ -94,11 +100,10 @@ export function Header() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                  isActive(item.href)
+                className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive(item.href)
                     ? "text-emerald-600 border-b-2 border-emerald-600"
                     : "text-stone-700 hover:text-emerald-600 hover:border-b-2 hover:border-emerald-300"
-                }`}
+                  }`}
                 aria-current={isActive(item.href) ? "page" : undefined}
               >
                 {item.name}
@@ -119,29 +124,29 @@ export function Header() {
               </Button>
             </Link>
 
-         <Link href="/cart" className="relative">
-  <Button
-    variant="ghost"
-    size="sm"
-    className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-  >
-    <ShoppingCart className="h-5 w-5" />
-    {cartCount > 0 && (
-      <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-        {cartCount}
-      </span>
-    )}
-  </Button>
-</Link>
+            <Link href="/cart" className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
 
-            {/* ✅ Show user's name if logged in */}
+            {/* Show user's name if logged in */}
             {user ? (
               <>
                 <Button variant="ghost" size="sm" className="hover:bg-stone-100 transition-colors">
                   <User className="h-5 w-5 mr-2" /> {user.email}
                 </Button>
 
-                {/* ✅ Logout button */}
+                {/* Logout button */}
                 <Button size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-50" onClick={handleLogout}>
                   <LogOut className="h-5 w-5 mr-1" /> Logout
                 </Button>
@@ -171,9 +176,8 @@ export function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${
-                    isActive(item.href) ? "text-emerald-600 bg-emerald-50" : "text-stone-700 hover:text-emerald-600 hover:bg-stone-50"
-                  }`}
+                  className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${isActive(item.href) ? "text-emerald-600 bg-emerald-50" : "text-stone-700 hover:text-emerald-600 hover:bg-stone-50"
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}

@@ -14,7 +14,7 @@ interface IProduct extends Document {
   reviews: mongoose.Types.ObjectId[];
   isBranded: boolean;
   averageRating: number;
-  isFeatured: boolean; // ✅ Featured flag added
+  isFeatured: boolean; // ✅ Added featured flag
 }
 
 const ProductSchema = new Schema<IProduct>({
@@ -28,7 +28,7 @@ const ProductSchema = new Schema<IProduct>({
   brand: { type: String },
   tags: { type: String },
   weights: [{ label: String, price: Number, quantity: Number }], // ✅ Updated structure
-  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }], // Linked reviews
+  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }],
   isBranded: { type: Boolean, required: true, default: true },
   averageRating: { type: Number, default: 0 },
   isFeatured: { type: Boolean, required: true, default: false }, // ✅ Added featured flag

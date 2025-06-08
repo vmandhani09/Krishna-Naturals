@@ -1,79 +1,97 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dbConnect } from "@/lib/dbConnect";
 import CartItem from "@/lib/models/cartItem";
-import User from "@/lib/models/user";
-// 🛒 **POST: Add an Item to the Cart**
-export async function GET(req: NextRequest, context: { params: { userId: string } }) {
-  try {
-    await dbConnect();
-    const { userId } = context.params;
+import { dbConnect } from "@/lib/dbConnect";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
-    if (!userId) {
-      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
-    }
+const SECRET_KEY = process.env.JWT_SECRET || "default-secret-key";
 
-    const cartItems = await CartItem.find({ userId });
-
-    return NextResponse.json(cartItems);
-  } catch (error) {
-    console.error("Error fetching cart items:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
+// 🛒 Add or update cart
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { userId, sku, productName, productImage, weight, price, quantity } = await req.json();
+    const { productId, weight, quantity } = await req.json();
 
-    if (!userId || !sku || !productName || !productImage || !weight || !price || !quantity) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!productId || !weight || quantity < 1) {
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
     }
 
-    const cartItem = await CartItem.create({
-      userId,
-      sku,
-      productName,
-      productImage,
-      weight,
-      price,
-      quantity,
-    });
+    // Get userId from JWT
+    const authHeader = req.headers.get("authorization");
+    let userId = null;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const decoded = jwt.verify(token, SECRET_KEY) as any;
+        userId = decoded.userId;
+      } catch (err) {
+        console.error("JWT error:", err);
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
 
-    // Add reference to user's cart
-    await User.findByIdAndUpdate(userId, { $push: { cart: cartItem._id } });
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized: No userId" }, { status: 401 });
+    }
 
-    return NextResponse.json({ message: "Product added to cart", cartItem });
+    // Convert IDs to ObjectId for correct querying
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const productObjectId = new mongoose.Types.ObjectId(productId);
+
+    const existing = await CartItem.findOne({ userId: userObjectId, productId: productObjectId, weight });
+
+    if (existing) {
+      // SET the quantity instead of adding
+      existing.quantity = quantity;
+      await existing.save();
+    } else {
+      await CartItem.create({ userId: userObjectId, productId: productObjectId, weight, quantity });
+    }
+
+    return NextResponse.json({ message: "Cart updated successfully" }, { status: 200 });
   } catch (error) {
-    console.error("Error adding to cart:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error in POST /api/cart:", error);
+    return NextResponse.json({ error: "Internal Server Errors" }, { status: 500 });
   }
 }
 
-// 🛍️ **GET: Fetch All Cart Items for a User**
-
-// ❌ **DELETE: Remove Item from Cart**
-export async function DELETE(req: NextRequest, context: { params: { userId: string; sku: string } }) {
+// ❌ Remove from cart
+export async function DELETE(req: NextRequest) {
   try {
     await dbConnect();
-    const { userId, sku } = context.params;
+    const { productId, weight } = await req.json();
 
-    if (!userId || !sku) {
-      return NextResponse.json({ error: "Missing userId or sku" }, { status: 400 });
+    // Get userId from JWT
+    const authHeader = req.headers.get("authorization");
+    let userId = null;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const decoded = jwt.verify(token, SECRET_KEY) as any;
+        userId = decoded.userId;
+      } catch (err) {
+        console.error("JWT error:", err);
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
-    const deletedItem = await CartItem.findOneAndDelete({ userId, sku });
-
-    if (!deletedItem) {
-      return NextResponse.json({ error: "Cart item not found" }, { status: 404 });
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized: No userId" }, { status: 401 });
     }
 
-    // Remove reference from user's cart
-    await User.findByIdAndUpdate(userId, { $pull: { cart: deletedItem._id } });
+    if (!productId || !weight) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
 
-    return NextResponse.json({ message: "Cart item removed", deletedItem });
+    // Convert IDs to ObjectId for correct deletion
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const productObjectId = new mongoose.Types.ObjectId(productId);
+
+    await CartItem.deleteOne({ userId: userObjectId, productId: productObjectId, weight });
+
+    return NextResponse.json({ message: "Item removed from cart" }, { status: 200 });
   } catch (error) {
-    console.error("Error deleting cart item:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error in DELETE /api/cart:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

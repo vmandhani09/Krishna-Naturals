@@ -1,42 +1,49 @@
 import type { Product, User } from "@/types"
 
-
 export const users: User[] = [
   {
-
+    _id: "1",
     name: "Priya Sharma",
     email: "priya@example.com",
     password: "password123",
     role: "user",
     mobile: "+91 9876543210",
     createdAt: new Date("2024-01-15"),
+    cart: [],
+    wishlist: [],
   },
   {
-    id: "2",
+    _id: "2",
     name: "Rajesh Kumar",
     email: "rajesh@example.com",
     password: "password123",
     role: "user",
     mobile: "+91 9876543211",
     createdAt: new Date("2024-01-10"),
+    cart: [],
+    wishlist: [],
   },
   {
-    id: "3",
+    _id: "3",
     name: "Anita Patel",
     email: "anita@example.com",
     password: "password123",
     role: "user",
     mobile: "+91 9876543212",
     createdAt: new Date("2024-01-05"),
+    cart: [],
+    wishlist: [],
   },
   {
-    id: "4",
+    _id: "4",
     name: "Admin User",
     email: "admin@krishnanaturals.com",
     password: "admin123",
     role: "admin",
     mobile: "+91 9876543213",
     createdAt: new Date("2024-01-01"),
+    cart: [],
+    wishlist: [],
   },
 ]
 
@@ -47,19 +54,39 @@ export const categories = [
   { id: "spices", name: "Spices", icon: "🌶️" },
 ]
 
-export const orders = [
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
+
+export interface Order {
+  id: string;
+  userId: string;
+  customerName: string;
+  customerEmail: string;
+  items: any[];
+  total: number;
+  status: OrderStatus;
+  createdAt: Date;
+  shippingAddress: {
+    name: string;
+    email: string;
+    mobile: string;
+    address: string;
+    city: string;
+    pincode: string;
+  };
+}
+
+export const orders: Order[] = [
   {
     id: "ORD-001",
     userId: "1",
     customerName: "Priya Sharma",
     customerEmail: "priya@example.com",
-    customerMobile: "+91 9876543210",
     items: [
       { productId: "1", productName: "Premium Almonds", weight: "500g", price: 549, quantity: 1 },
       { productId: "2", productName: "Organic Dates", weight: "250g", price: 199, quantity: 2 },
     ],
     total: 947,
-    status: "pending" as const,
+    status: "pending",
     shippingAddress: {
       name: "Priya Sharma",
       email: "priya@example.com",
@@ -75,13 +102,12 @@ export const orders = [
     userId: "2",
     customerName: "Rajesh Kumar",
     customerEmail: "rajesh@example.com",
-    customerMobile: "+91 9876543211",
     items: [
       { productId: "3", productName: "Mixed Seeds", weight: "250g", price: 299, quantity: 1 },
       { productId: "4", productName: "Turmeric Powder", weight: "100g", price: 99, quantity: 1 },
     ],
     total: 398,
-    status: "shipped" as const,
+    status: "shipped",
     shippingAddress: {
       name: "Rajesh Kumar",
       email: "rajesh@example.com",
@@ -97,10 +123,9 @@ export const orders = [
     userId: "3",
     customerName: "Anita Patel",
     customerEmail: "anita@example.com",
-    customerMobile: "+91 9876543212",
     items: [{ productId: "5", productName: "Cashew Nuts", weight: "500g", price: 749, quantity: 1 }],
     total: 749,
-    status: "delivered" as const,
+    status: "delivered",
     shippingAddress: {
       name: "Anita Patel",
       email: "anita@example.com",

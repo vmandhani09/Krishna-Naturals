@@ -1,215 +1,241 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CartItem } from "@/types";
+import { CartItem, Product } from "@/types";
+
+interface LocalCartItem {
+  productId: string;
+  weight: string;
+  quantity: number;
+}
 
 export function useCart() {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<(CartItem & { product: Product | null })[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Helper: Merge duplicates (items with the same SKU and weight)
-  const deduplicateCart = useCallback((items: CartItem[]): CartItem[] => {
-    const merged = items.reduce((acc: Record<string, CartItem>, item) => {
-      const key = `${item.sku}-${item.weight}`;
-      if (acc[key]) {
-        acc[key].quantity += item.quantity;
-      } else {
-        acc[key] = { ...item };
-      }
-      return acc;
-    }, {});
-    return Object.values(merged);
-  }, []);
-
-  // 🔍 Fetch cart items
-  const fetchCart = useCallback(async () => {
-    const userToken = localStorage.getItem("userToken");
-    if (userToken) {
-      try {
-        const response = await fetch(`/api/cart/${userToken}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          // Deduplicate before setting state
-          setCart(deduplicateCart(data));
-        } else {
-          console.error("Failed to fetch cart from API");
-        }
-      } catch (error) {
-        console.error("Error fetching cart:", error);
-      }
-    } else {
-      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-      setCart(deduplicateCart(guestCart));
-    }
-  }, [deduplicateCart]);
-
-  // Fetch cart on mount
-  useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
-  const getCartItemsCount = useCallback(() => {
-  return cart.reduce((total, item) => total + item.quantity, 0);
-}, [cart]);
-
-
-  const addToCart = async (item: CartItem) => {
-  const userToken = localStorage.getItem("userToken");
-
-  if (userToken) {
+  const getLocalCart = (): LocalCartItem[] => {
     try {
-      const response = await fetch(`/api/cart/${userToken}`, {
-        method: "GET",
+      return JSON.parse(localStorage.getItem("guestCart") || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  const setLocalCart = (items: LocalCartItem[]) => {
+    localStorage.setItem("guestCart", JSON.stringify(items));
+  };
+
+  const fetchProductDetails = async (items: any[]) => {
+    if (!items.length) return [];
+    const ids = [...new Set(items.map((item) => item.productId))];
+
+    try {
+      const res = await fetch("/api/products/by-ids", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
       });
+      const data = await res.json();
+      const products = Array.isArray(data.products) ? data.products : [];
 
-      if (!response.ok) throw new Error("Failed to fetch cart for merging");
+      return items.map((item) => ({
+        ...item,
+        product: products.find((p: Product) => p._id === item.productId) || null,
+      }));
+    } catch (error) {
+      console.error("Error fetching product details", error);
+      return items.map((item) => ({ ...item, product: null }));
+    }
+  };
 
-      const existingCart = await response.json();
-      const mergedCart = deduplicateCart(existingCart);
-      const existingItem = mergedCart.find(
-        (cartItem: CartItem) => cartItem.sku === item.sku && cartItem.weight === item.weight
-      );
+  const syncLocalCartToDB = async (userToken: string) => {
+    const localCart = getLocalCart();
+    if (!localCart.length) return;
 
-      if (existingItem) {
-        await fetch(`/api/cart/update`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+    try {
+      for (const item of localCart) {
+        await fetch("/api/user/cart", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
           body: JSON.stringify({
-            sku: item.sku,
+            productId: item.productId,
             weight: item.weight,
-            quantity: existingItem.quantity + item.quantity,
+            quantity: item.quantity,
           }),
         });
-      } else {
-        await fetch("/api/cart", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: userToken, ...item }),
-        });
       }
-
-      await fetchCart(); // ✅ Refresh cart after modification
-      window.dispatchEvent(new Event("cartUpdated")); // ✅ Notify UI instantly
-    } catch (error) {
-      console.error("Error updating cart:", error);
+      setLocalCart([]);
+      window.dispatchEvent(new Event("cartUpdated"));
+    } catch (err) {
+      console.error("Cart sync failed", err);
     }
-  } else {
-    // ✅ Guest cart logic
-    let guestCart: CartItem[] = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    const existingItemIndex = guestCart.findIndex(
-      (cartItem: CartItem) => cartItem.sku === item.sku && cartItem.weight === item.weight
+  };
+
+  const fetchCart = useCallback(async () => {
+    setLoading(true);
+    const userToken = localStorage.getItem("userToken");
+
+    if (userToken) {
+      await syncLocalCartToDB(userToken);
+      const res = await fetch("/api/user/cart", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const { cart: dbCart } = await res.json();
+      const items = Array.isArray(dbCart)
+        ? dbCart.map((item: any) => ({
+            productId: item.productId,
+            weight: item.weight,
+            quantity: item.quantity,
+            userId: item.userId,
+          }))
+        : [];
+
+      const merged = await fetchProductDetails(items);
+      setCart(merged);
+    } else {
+      const localCart = getLocalCart();
+      const merged = await fetchProductDetails(localCart);
+      setCart(merged);
+    }
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchCart();
+    window.addEventListener("cartUpdated", fetchCart);
+    return () => window.removeEventListener("cartUpdated", fetchCart);
+  }, [fetchCart]);
+
+  const addToCart = async (productId: string, weight: string, quantity = 1) => {
+    const userToken = localStorage.getItem("userToken");
+    console.log("addToCart called", { productId, weight, quantity, userToken });
+
+    if (userToken) {
+      const res = await fetch("/api/user/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ productId, weight, quantity }),
+      });
+      const data = await res.json();
+      console.log("API response:", data);
+      if (!res.ok) {
+        console.error("Failed to add to cart:", data);
+      }
+    } else {
+      let localCart = getLocalCart();
+      const index = localCart.findIndex(
+        (item) => item.productId === productId && item.weight === weight  
+      );
+
+      if (index !== -1) {
+        localCart[index].quantity = quantity; // <-- SET instead of ADD
+      } else {
+        localCart.push({ productId, weight, quantity });
+      }
+      setLocalCart(localCart);
+      console.log("Updated guest cart:", localCart);
+    }
+
+    window.dispatchEvent(new Event("cartUpdated"));
+  };
+
+  const removeFromCart = async (productId: string, weight: string) => {
+    const userToken = localStorage.getItem("userToken");
+    if (userToken) {
+      await fetch("/api/user/cart", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ productId, weight }),
+      });
+    } else {
+      let localCart = getLocalCart();
+      localCart = localCart.filter(
+        (item) => !(String(item.productId) === productId && String(item.weight) === weight)
+      );
+      setLocalCart(localCart);
+    }
+    window.dispatchEvent(new Event("cartUpdated"));
+  };
+
+  const updateQuantity = async (productId: string, weight: string, quantity: number) => {
+    // Optimistically update UI
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        String(item.productId) === String(productId) && String(item.weight) === String(weight)
+          ? { ...item, quantity }
+          : item
+      )
     );
 
-    if (existingItemIndex !== -1) {
-      guestCart[existingItemIndex].quantity += item.quantity; // ✅ Merge duplicate SKU + weight
-    } else {
-      guestCart.push(item);
-    }
-
-    localStorage.setItem("guestCart", JSON.stringify(guestCart));
-    setCart(guestCart);
-    window.dispatchEvent(new Event("cartUpdated")); // ✅ Notify UI instantly
-  }
-};
-
-  // 🔄 Update item quantity (by SKU and weight)
-  const updateQuantity = async (sku: string, weight: string, newQuantity: number) => {
     const userToken = localStorage.getItem("userToken");
-
     if (userToken) {
-      try {
-        const response = await fetch(`/api/cart/update`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sku, weight, quantity: newQuantity }),
-        });
-        if (response.ok) {
-          await fetchCart();
-          window.dispatchEvent(new Event("cartUpdated")); // ✅ Dispatch event
-        } else {
-          console.error("Failed to update quantity in API");
-        }
-      } catch (error) {
-        console.error("Error updating cart:", error);
-      }
-    } else {
-      let updatedCart = cart.map((item) => {
-        if (item.sku === sku && item.weight === weight) {
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
+      await fetch("/api/user/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ productId, weight, quantity }),
       });
-      updatedCart = deduplicateCart(updatedCart);
-      localStorage.setItem("guestCart", JSON.stringify(updatedCart));
-      setCart(updatedCart);
-      window.dispatchEvent(new Event("cartUpdated")); // ✅ Dispatch event
-    }
-  };
-
-  // ❌ Remove an item from the cart (by SKU and weight)
-  const removeFromCart = async (sku: string, weight: string) => {
-    const userToken = localStorage.getItem("userToken");
-
-    if (userToken) {
-      try {
-        const response = await fetch(`/api/cart/remove`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sku, weight }),
-        });
-        if (response.ok) {
-          await fetchCart();
-          window.dispatchEvent(new Event("cartUpdated")); // ✅ Dispatch event
-        } else {
-          console.error("Failed to remove item from cart in API");
-        }
-      } catch (error) {
-        console.error("Error removing item:", error);
-      }
+      // Do NOT call fetchCart or dispatch cartUpdated here!
     } else {
-      let updatedCart = cart.filter((item) => !(item.sku === sku && item.weight === weight));
-      updatedCart = deduplicateCart(updatedCart);
-      localStorage.setItem("guestCart", JSON.stringify(updatedCart));
-      setCart(updatedCart);
-      window.dispatchEvent(new Event("cartUpdated")); // ✅ Dispatch event
+      let localCart = getLocalCart();
+      localCart = localCart.map((item) =>
+        item.productId === productId && item.weight === weight
+          ? { ...item, quantity }
+          : item
+      );
+      setLocalCart(localCart);
+      // Do NOT dispatch cartUpdated here!
     }
   };
 
-  // 🛍️ Clear entire cart
   const clearCart = async () => {
     const userToken = localStorage.getItem("userToken");
+
     if (userToken) {
-      try {
-        const response = await fetch(`/api/cart/${userToken}`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (response.ok) {
-          await fetchCart();
-          window.dispatchEvent(new Event("cartUpdated")); // ✅ Dispatch event
-        } else {
-          console.error("Failed to clear cart in API");
-        }
-      } catch (error) {
-        console.error("Error clearing cart:", error);
-      }
+      await fetch("/api/user/cart", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
     } else {
-      localStorage.removeItem("guestCart");
-      setCart([]);
-      window.dispatchEvent(new Event("cartUpdated")); // ✅ Dispatch event
+      setLocalCart([]);
     }
+
+    window.dispatchEvent(new Event("cartUpdated"));
   };
+
+  const getCartItemsCount = () => cart.reduce((total, item) => total + item.quantity, 0);
+
+  const getCartTotal = () =>
+    cart.reduce((total, item) => {
+      const price =
+        item.product && Array.isArray(item.product.weights)
+          ? item.product.weights.find((w) => w.label === item.weight)?.price || 0
+          : 0;
+      return total + price * item.quantity;
+    }, 0);
 
   return {
     cart,
+    loading,
     getCartItemsCount,
+    syncLocalCartToDB,
     fetchCart,
     addToCart,
     updateQuantity,
     removeFromCart,
     clearCart,
-    getCartTotal: () => cart.reduce((total, item) => total + item.price * item.quantity, 0),
+    getCartTotal,
   };
 }
