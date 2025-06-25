@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { MapPin, Phone, Mail, Clock, Send } from "lucide-react"
+import FAQSection from "@/components/ui/FAQSection"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -45,87 +45,81 @@ export default function ContactPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Contact Information */}
-        <div className="space-y-8">
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        {/* LEFT: Contact Details + Map */}
+        <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
-            <p className="text-gray-600 mb-8">
-              We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Get in Touch</h2>
+            <p className="text-gray-600">
+              We'd love to hear from you. Send us a message and we'll respond as soon as possible.
             </p>
           </div>
 
-          {/* Contact Details */}
+          {/* Contact Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Phone className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Phone</h3>
-                <p className="text-gray-600">+91 9876543210</p>
-                <p className="text-sm text-gray-500 mt-1">Mon-Sat, 9AM-7PM</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
-                <p className="text-gray-600">info@krishnanaturals.com</p>
-                <p className="text-sm text-gray-500 mt-1">We reply within 24hrs</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Address</h3>
-                <p className="text-gray-600">123 Spice Market Street</p>
-                <p className="text-gray-600">Mumbai, Maharashtra 400001</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Store Hours</h3>
-                <p className="text-gray-600">Mon-Sat: 9:00 AM - 7:00 PM</p>
-                <p className="text-gray-600">Sunday: 10:00 AM - 6:00 PM</p>
-              </CardContent>
-            </Card>
+            {[
+              {
+                icon: <Phone className="h-6 w-6 text-emerald-600" />,
+                title: "Phone",
+                lines: ["+91 9876543210", "Mon-Sat, 9AM-7PM"],
+              },
+              {
+                icon: <Mail className="h-6 w-6 text-emerald-600" />,
+                title: "Email",
+                lines: ["info@krishnanaturals.com", "We reply within 24hrs"],
+              },
+              {
+                icon: <MapPin className="h-6 w-6 text-emerald-600" />,
+                title: "Address",
+                lines: ["123 Spice Market Street", "Mumbai, Maharashtra 400001"],
+              },
+              {
+                icon: <Clock className="h-6 w-6 text-emerald-600" />,
+                title: "Store Hours",
+                lines: ["Mon-Sat: 9:00 AM - 7:00 PM", "Sunday: 10:00 AM - 6:00 PM"],
+              },
+            ].map((item, idx) => (
+              <Card key={idx}>
+                <CardContent className="p-6 text-center">
+                  <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                    {item.icon}
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">{item.title}</h3>
+                  {item.lines.map((line, i) => (
+                    <p key={i} className={`text-gray-${i === 0 ? "600" : "500"} text-sm`}>
+                      {line}
+                    </p>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Map */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Find Us</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d60304.78536754498!2d77.28392466953126!3d19.149328549817582!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bd1d6383bb5a859%3A0x4566f2e227148be!2sShri%20Krishna%20Trading!5e0!3m2!1sen!2sin!4v1749375062631!5m2!1sen!2sin"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Google Map"
-                ></iframe>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Map Card */}
+          <Card className="h-full">
+  <CardHeader>
+    <CardTitle>Find Us</CardTitle>
+  </CardHeader>
+  <CardContent className="h-[300px] p-0 overflow-hidden rounded-b-lg">
+    <iframe
+     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d60304.78536754498!2d77.28392466953126!3d19.149328549817582!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bd1d6383bb5a859%3A0x4566f2e227148be!2sShri%20Krishna%20Trading!5e0!3m2!1sen!2sin!4v1749375062631!5m2!1sen!2sin"
+      width="100%"
+      height="100%"
+      style={{ border: 0 }}
+      allowFullScreen
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      title="Google Map"
+      className="w-full h-full"
+    />
+  </CardContent>
+</Card>
+
         </div>
 
-        {/* Contact Form */}
-        <div>
+        {/* RIGHT: Contact Form + FAQ */}
+        <div className="space-y-8 h-fit self-start">
           <Card>
             <CardHeader>
               <CardTitle>Send us a Message</CardTitle>
@@ -190,32 +184,12 @@ export default function ContactPage() {
             </CardContent>
           </Card>
 
-          {/* FAQ Section */}
-          <Card className="mt-8">
+          <Card>
             <CardHeader>
-              <CardTitle>Frequently Asked Questions</CardTitle>
+              <CardTitle>FAQs</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-1">What are your delivery timings?</h4>
-                <p className="text-sm text-gray-600">
-                  We deliver Monday to Saturday, 9 AM to 7 PM. Orders placed before 2 PM are usually delivered the same
-                  day.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-1">Do you offer bulk discounts?</h4>
-                <p className="text-sm text-gray-600">
-                  Yes, we offer special pricing for bulk orders. Please contact us for more details.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-1">Are your products organic?</h4>
-                <p className="text-sm text-gray-600">
-                  Most of our products are organic and naturally sourced. Check individual product descriptions for
-                  certification details.
-                </p>
-              </div>
+            <CardContent className="p-0">
+              <FAQSection />
             </CardContent>
           </Card>
         </div>

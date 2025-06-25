@@ -69,11 +69,13 @@ export default function AboutPage() {
           </div>
           <div className="relative">
             <Image
-              src="/placeholder.svg?height=500&width=600"
-              alt="Krishna Naturals story"
+              src="https://res.cloudinary.com/dfv7xsiud/image/upload/v1750242790/DD4_bnpcj0.webp"
+              
+              alt="Our Story"
               width={600}
-              height={500}
-              className="rounded-lg shadow-xl"
+              height={400}
+              className="rounded-lg shadow-lg object-cover w-full h-full"
+              loading="lazy"
             />
           </div>
         </div>
