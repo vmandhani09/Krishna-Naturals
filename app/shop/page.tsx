@@ -11,7 +11,7 @@ import { RangeSlider } from "@/components/ui/range-slider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import { categories } from "@/lib/data"
-
+import { useSearchParams } from "next/navigation";
 import { Product } from "@/types";
 
 export default function ShopPage() {
@@ -23,6 +23,14 @@ export default function ShopPage() {
   const [sortBy, setSortBy] = useState("name");
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const searchParams = useSearchParams(); // ← This reads the query params
+
+  useEffect(() => {
+    const categoryFromQuery = searchParams.get("category");
+    if (categoryFromQuery) {
+      setSelectedCategories([categoryFromQuery]);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -127,38 +135,58 @@ export default function ShopPage() {
       <div className="bg-white border border-stone-200 rounded-lg p-4 mb-6 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Categories */}
-          <div className="flex-1">
-            <Label className="text-sm font-medium text-stone-700 mb-2 block">Categories</Label>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <label key={category.id} className="flex items-center space-x-2 cursor-pointer">
-                  <Checkbox
-                    checked={selectedCategories.includes(category.id)}
-                    onCheckedChange={(checked) => handleCategoryChange(category.id, checked as boolean)}
-                  />
-                  <span className="text-sm">
-                    {category.icon} {category.name}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+         <div className="flex flex-wrap gap-3 mt-2">
+  {/* All Button */}
+  <button
+    onClick={() => setSelectedCategories([])}
+    className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-200 border ${
+      selectedCategories.length === 0 || selectedCategories.length === categories.length
+        ? "bg-emerald-600 text-white border-emerald-600"
+        : "bg-white text-stone-700 border-stone-300 hover:bg-emerald-50 hover:border-emerald-400"
+    }`}
+  >
+    All
+  </button>
 
-          {/* Weights */}
-          <div className="flex-1">
-            <Label className="text-sm font-medium text-stone-700 mb-2 block">Weights</Label>
-            <div className="flex flex-wrap gap-2">
-              {allWeights.map((weight) => (
-                <label key={weight} className="flex items-center space-x-2 cursor-pointer">
-                  <Checkbox
-                    checked={selectedWeights.includes(weight)}
-                    onCheckedChange={(checked) => handleWeightChange(weight, checked as boolean)}
-                  />
-                  <span className="text-sm">{weight}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+  {/* Category Buttons */}
+  {categories.map((category) => {
+    const isSelected = selectedCategories.includes(category.id);
+
+    return (
+      <button
+        key={category.id}
+        onClick={() => {
+          let updated = [];
+          if (isSelected) {
+            updated = selectedCategories.filter((id) => id !== category.id);
+          } else {
+            updated = [...selectedCategories, category.id];
+          }
+
+          // If all categories selected manually → switch to "All" logic
+          if (updated.length === categories.length) {
+            setSelectedCategories([]);
+          } else {
+            setSelectedCategories(updated);
+          }
+        }}
+        className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-200 border ${
+          isSelected
+            ? "bg-emerald-600 text-white border-emerald-600"
+            : "bg-white text-stone-700 border-stone-300 hover:bg-emerald-50 hover:border-emerald-400"
+        }`}
+      >
+        <span className="inline-flex items-center gap-1">
+          {category.icon} {category.name}
+        </span>
+      </button>
+    );
+  })}
+</div>
+
+
+
+         
 
           {/* Price Range */}
           <div className="flex-1">
