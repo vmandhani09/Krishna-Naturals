@@ -110,15 +110,6 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-600 text-center">
-                <strong>Demo Credentials:</strong>
-                <br />
-                Email: admin@krishnanaturals.com
-                <br />
-                Password: admin123
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

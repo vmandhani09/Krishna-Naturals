@@ -3,6 +3,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from 'next/font/google'
 import { ConditionalLayout } from "@/components/layout/conditional-layout"
+import { Toaster } from "react-hot-toast";
 
 import "./globals.css"
 
