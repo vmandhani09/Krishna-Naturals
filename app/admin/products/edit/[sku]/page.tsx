@@ -32,7 +32,7 @@ export default function EditProductPage() {
     description: "",
     category: "",
     sku: "",
-    brand: "Krishna Naturals",
+    brand: "Dryfruit Grove",
     tags: "",
     weights: [{ label: "", price: 0, quantity: 0 }],
     isBranded: true,
@@ -362,7 +362,7 @@ const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                            name="brand"
                            value={formData.brand}
                            onChange={handleInputChange}
-                           placeholder="e.g., Krishna Naturals"
+                           placeholder="e.g., Dryfruit Grove"
                          />
                        </div>
                      ) : (

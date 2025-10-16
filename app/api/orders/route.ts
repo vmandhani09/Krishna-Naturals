@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import Order from "@/lib/models/Order";
+import crypto from "crypto";
 import { dbConnect } from "@/lib/dbConnect";
 
 const SECRET_KEY = process.env.JWT_SECRET || "default-secret-key";
@@ -58,11 +59,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Prepare the order document
-    const orderDoc = {
-      userId: userId
-        ? new mongoose.Types.ObjectId(userId)
-        : undefined,
+    const orderId = `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const createdOrder = await Order.create({
+      orderId,
+      userId: userId ? new mongoose.Types.ObjectId(userId) : undefined,
       items: body.items.map((item: any) => ({
         productId: new mongoose.Types.ObjectId(item.productId),
         productName: item.productName,
@@ -70,18 +70,17 @@ export async function POST(req: NextRequest) {
         price: item.price,
         quantity: item.quantity,
       })),
-      totalAmount: body.totalAmount,
-      paymentMethod: body.paymentMethod,
       shippingAddress: body.shippingAddress,
-      status: "Pending",
-    };
-
-    const createdOrder = await Order.create(orderDoc);
+      pricing: body.pricing,
+      paymentDetails: { method: body.paymentMethod, status: "pending" },
+      orderStatus: "pending",
+      paymentStatus: "pending",
+    });
 
     return NextResponse.json(
       {
         message: "Order placed successfully",
-        orderId: createdOrder._id,
+        orderId: createdOrder.orderId,
       },
       { status: 200 }
     );

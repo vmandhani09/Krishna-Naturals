@@ -27,7 +27,7 @@ export default function AddProductPage() {
       description: "",
       category: "",
       sku: "",
-      brand: "Krishna Naturals",
+      brand: "Dryfruit Grove",
       tags: "",
        weights: [{ label: "", price: 0, quantity: 0 }],
       isBranded: true,
@@ -312,7 +312,7 @@ export default function AddProductPage() {
                       name="brand"
                       value={formData.brand}
                       onChange={handleInputChange}
-                      placeholder="e.g., Krishna Naturals"
+                      placeholder="e.g., Dryfruit Grove"
                     />
                   </div>
                 ) : (

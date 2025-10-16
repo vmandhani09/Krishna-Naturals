@@ -65,7 +65,7 @@ export default async function AdminDashboardPage() {
     <div className="p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-gray-600">Welcome to Krishna Naturals Admin Panel</p>
+        <p className="text-gray-600">Welcome to Dryfruit Grove Admin Panel</p>
       </div>
 
       {/* Stats Grid */}

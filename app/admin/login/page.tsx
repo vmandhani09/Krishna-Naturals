@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
             <Shield className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white">Admin Portal</h1>
-          <p className="text-gray-300 mt-2">Krishna Naturals Admin Access</p>
+          <p className="text-gray-300 mt-2">Dryfruit Grove Admin Access</p>
         </div>
 
         <Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -43,22 +43,6 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      // Check if user is logged in
-      const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("token")
-          : null;
-
-      if (!token) {
-        // Guest user → no API call
-        clearCart();
-        toast.success("Order placed successfully!");
-        router.push("/account");
-        return;
-      }
-
-      // User is logged in → create order in database
-
       const items = cart.map((item) => {
         const price =
           item.product?.weights?.find(
@@ -74,36 +58,47 @@ export default function CheckoutPage() {
         };
       });
 
-      const shippingAddress = `
-        ${formData.name},
-        ${formData.address},
-        ${formData.city} - ${formData.pincode}
-        Mobile: ${formData.mobile}
-      `;
+      const shippingAddress = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.mobile,
+        address1: formData.address,
+        city: formData.city,
+        zip: formData.pincode,
+      };
+
+      const pricing = {
+        subtotal,
+        shipping,
+        tax: 0,
+        total,
+      };
+
+      // store for payment page
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("checkout_shipping", JSON.stringify(shippingAddress));
+        sessionStorage.setItem("checkout_pricing", JSON.stringify(pricing));
+      }
 
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items,
-          totalAmount: total,
-          paymentMethod: "Cash on Delivery",
           shippingAddress,
+          pricing,
+          paymentMethod: "stripe",
         }),
       });
 
       const data = await res.json();
-
-      if (res.ok) {
-        clearCart();
-        toast.success("Order placed successfully!");
-        router.push("/account");
+      if (res.ok && data.orderId) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("orderId", data.orderId);
+        }
+        router.push("/payment");
       } else {
-        console.error(data);
-        toast.error(data.error || "Failed to place order.");
+        toast.error(data.error || "Failed to start checkout.");
       }
     } catch (error) {
       console.error(error);
@@ -231,9 +226,7 @@ export default function CheckoutPage() {
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   disabled={isProcessing || cart.length === 0}
                 >
-                  {isProcessing
-                    ? "Processing..."
-                    : `Place Order - ₹${total}`}
+                  {isProcessing ? "Processing..." : "Proceed to Payment"}
                 </Button>
               </form>
             </CardContent>

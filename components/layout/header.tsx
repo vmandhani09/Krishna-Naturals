@@ -89,8 +89,8 @@ export function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/home" className="text-2xl font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
-              Krishna Naturals
+            <Link href="/" className="text-2xl font-bold text-primary hover:opacity-90 transition-colors">
+              Dryfruit Grove
             </Link>
           </div>
 
@@ -101,8 +101,8 @@ export function Header() {
                 key={item.name}
                 href={item.href}
                 className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive(item.href)
-                    ? "text-emerald-600 border-b-2 border-emerald-600"
-                    : "text-stone-700 hover:text-emerald-600 hover:border-b-2 hover:border-emerald-300"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-stone-700 hover:text-primary hover:border-b-2 hover:border-primary/40"
                   }`}
                 aria-current={isActive(item.href) ? "page" : undefined}
               >
@@ -128,11 +128,11 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                className="relative hover:bg-secondary hover:text-primary transition-colors"
               >
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {cartCount}
                   </span>
                 )}
@@ -153,7 +153,7 @@ export function Header() {
               </>
             ) : (
               <Link href="/auth/login">
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 hover:shadow-lg">
+                <Button size="sm" className="bg-primary hover:opacity-90 text-primary-foreground transition-all duration-300 hover:shadow-lg">
                   Login
                 </Button>
               </Link>
@@ -176,7 +176,7 @@ export function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${isActive(item.href) ? "text-emerald-600 bg-emerald-50" : "text-stone-700 hover:text-emerald-600 hover:bg-stone-50"
+                  className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${isActive(item.href) ? "text-primary bg-secondary" : "text-stone-700 hover:text-primary hover:bg-stone-50"
                     }`}
                   onClick={() => setIsMenuOpen(false)}
                 >

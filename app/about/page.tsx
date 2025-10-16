@@ -34,7 +34,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-stone-800 mb-6">
-              About <span className="text-emerald-600">Krishna Naturals</span>
+              About <span className="text-emerald-600">Dryfruit Grove</span>
             </h1>
             <p className="text-xl text-stone-600 max-w-3xl mx-auto">
               Bringing you the finest dry fruits, nuts, seeds, and spices from nature's bounty. Our journey began with a
@@ -51,7 +51,7 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold text-stone-800 mb-6">Our Story</h2>
             <div className="space-y-4 text-stone-600">
               <p>
-                Founded in 2010, Krishna Naturals started as a small family business with a passion for bringing the
+                Founded in 2010, Dryfruit Grove started as a small family business with a passion for bringing the
                 finest natural products to health-conscious consumers. What began as a local venture has now grown into
                 a trusted brand serving customers across the country.
               </p>

@@ -74,7 +74,7 @@ export default function RegisterPage() {
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-emerald-600">Krishna Naturals</h1>
+            <h1 className="text-3xl font-bold text-emerald-600">Dryfruit Grove</h1>
             <p className="text-gray-600 mt-2">Create your account to get started</p>
           </div>
 

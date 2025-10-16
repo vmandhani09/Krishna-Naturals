@@ -31,7 +31,7 @@
         : undefined;
 
     return (
-      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl border-stone-200 bg-white">
+      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl border-border bg-card">
         <div className="relative overflow-hidden">
           <Image
             src={product.image || "/placeholder.svg"}
@@ -66,20 +66,20 @@
         </div>
 
         <CardContent className="p-4">
-          <h3 className="font-semibold text-lg text-stone-800 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+          <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
-          <p className="text-sm text-stone-600 mb-3 line-clamp-2">{product.description}</p>
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{product.description}</p>
 
           <div className="flex items-center justify-between mb-2">
-            <div className="text-emerald-600 font-bold text-lg">
+            <div className="text-primary font-bold text-lg">
               {Array.isArray(product.weights) && product.weights.length > 0
                 ? `₹${Math.min(...product.weights.map((w) => w.price))} - ₹${Math.max(
                     ...product.weights.map((w) => w.price)
                   )}`
                 : "Price not available"}
             </div>
-            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
+            <span className="text-xs bg-accent/20 text-accent-foreground px-2 py-1 rounded-full font-medium">
               {product.category}
             </span>
           </div>
@@ -88,7 +88,7 @@
 
         <CardFooter className="p-4 pt-0">
           <Link href={`/product/${product.slug}`}>
-            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 hover:shadow-lg">
+            <Button className="w-full bg-primary hover:opacity-95 text-primary-foreground transition-all duration-300 hover:shadow-lg">
               <ShoppingCart className="h-4 w-4 mr-2" />
               Select Options
             </Button>

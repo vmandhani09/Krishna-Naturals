@@ -13,7 +13,7 @@ const faqs: FAQ[] = [
     answer: 'You can place orders directly through our Bulk Ordering page, and we deliver across India.',
   },
   {
-    question: 'Does Krishna Naturals offer wholesale rates?',
+    question: 'Does Dryfruit Grove offer wholesale rates?',
     answer: 'Yes, we offer competitive wholesale pricing for bulk orders.',
   },
   {

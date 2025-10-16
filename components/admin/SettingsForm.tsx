@@ -14,7 +14,7 @@ import { Save, Upload, Bell, Shield, Mail, Globe } from 'lucide-react'
 export default function SettingsForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [settings, setSettings] = useState({
-    siteName: "Krishna Naturals",
+    siteName: "Dryfruit Grove",
     siteDescription: "Premium quality dry fruits, nuts, seeds, and spices",
     contactEmail: "info@krishnanaturals.com",
     contactPhone: "+91 9876543210",

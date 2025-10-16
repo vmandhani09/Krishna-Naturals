@@ -29,6 +29,7 @@ export default function ShopPage() {
     const categoryFromQuery = searchParams.get("category");
     if (categoryFromQuery) {
       setSelectedCategories([categoryFromQuery]);
+      
     }
   }, [searchParams]);
 
@@ -113,26 +114,26 @@ export default function ShopPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-800 mb-4">Shop All Products</h1>
-        <p className="text-stone-600">Discover our premium collection of dry fruits, nuts, seeds, and spices</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Shop All Products</h1>
+        <p className="text-muted-foreground">Discover our premium collection of dry fruits, nuts, seeds, and spices</p>
       </div>
 
       {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-2xl">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-stone-400" />
+          <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search products by name, brand, or tags..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12 text-lg border-stone-300 focus:border-emerald-500 focus:ring-emerald-500"
+            className="pl-10 h-12 text-lg border-border focus:border-primary focus:ring-primary"
           />
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white border border-stone-200 rounded-lg p-4 mb-6 shadow-sm">
+      <div className="bg-card border border-border rounded-lg p-4 mb-6 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Categories */}
          <div className="flex flex-wrap gap-3 mt-2">
@@ -141,8 +142,8 @@ export default function ShopPage() {
     onClick={() => setSelectedCategories([])}
     className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-200 border ${
       selectedCategories.length === 0 || selectedCategories.length === categories.length
-        ? "bg-emerald-600 text-white border-emerald-600"
-        : "bg-white text-stone-700 border-stone-300 hover:bg-emerald-50 hover:border-emerald-400"
+        ? "bg-primary text-primary-foreground border-primary"
+        : "bg-background text-foreground border-border hover:bg-secondary hover:border-primary/40"
     }`}
   >
     All
@@ -172,8 +173,8 @@ export default function ShopPage() {
         }}
         className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-200 border ${
           isSelected
-            ? "bg-emerald-600 text-white border-emerald-600"
-            : "bg-white text-stone-700 border-stone-300 hover:bg-emerald-50 hover:border-emerald-400"
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-background text-foreground border-border hover:bg-secondary hover:border-primary/40"
         }`}
       >
         <span className="inline-flex items-center gap-1">
@@ -190,7 +191,7 @@ export default function ShopPage() {
 
           {/* Price Range */}
           <div className="flex-1">
-            <Label className="text-sm font-medium text-stone-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Price Range: ₹{priceRange[0]} - ₹{priceRange[1]}
             </Label>
             <RangeSlider
@@ -205,15 +206,15 @@ export default function ShopPage() {
         </div>
 
         {/* Filter Actions */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-stone-200">
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
           <div className="flex items-center space-x-4">
             {hasActiveFilters && (
-              <Button variant="outline" size="sm" onClick={clearFilters} className="text-stone-600">
+              <Button variant="outline" size="sm" onClick={clearFilters} className="text-foreground">
                 <X className="h-4 w-4 mr-1" />
                 Clear Filters
               </Button>
             )}
-            <span className="text-sm text-stone-600">
+            <span className="text-sm text-muted-foreground">
               {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""} found
             </span>
           </div>
@@ -255,12 +256,12 @@ export default function ShopPage() {
       ) : (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-xl font-semibold text-stone-800 mb-2">No products found</h3>
-          <p className="text-stone-600 mb-6">Try adjusting your search or filter criteria</p>
+          <h3 className="text-xl font-semibold text-foreground mb-2">No products found</h3>
+          <p className="text-muted-foreground mb-6">Try adjusting your search or filter criteria</p>
           <Button
             variant="outline"
             onClick={clearFilters}
-            className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+            className="border-primary text-primary hover:bg-secondary"
           >
             Clear All Filters
           </Button>
