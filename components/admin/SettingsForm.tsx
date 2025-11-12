@@ -260,7 +260,7 @@ export default function SettingsForm() {
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <h4 className="font-medium text-amber-800 mb-2">Payment Gateway Settings</h4>
                 <p className="text-sm text-amber-700">
-                  Configure your payment gateway settings like Razorpay, PayU, or Stripe in the payment provider's dashboard.
+                  Configure your PhonePe payment gateway settings in the PhonePe Merchant Dashboard.
                   Contact support for assistance with payment integration.
                 </p>
               </div>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GoogleSignInButton } from "@/components/ui/GoogleSignInButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +22,26 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null); // ✅ Track logged-in user state
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    // Check for verification success message in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("verified") === "true") {
+      setSuccessMessage("Email verified successfully! You can now log in.");
+    }
+    if (urlParams.get("error")) {
+      const error = urlParams.get("error");
+      if (error === "invalid_token") {
+        setErrorMessage("Invalid or expired verification token.");
+      } else if (error === "already_verified") {
+        setSuccessMessage("Your email is already verified. You can now log in.");
+      } else if (error === "verification_failed") {
+        setErrorMessage("Email verification failed. Please try again.");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function syncWishlist() {
@@ -72,27 +91,28 @@ export default function LoginPage() {
         body: JSON.stringify({ email: formData.email, password: formData.password }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        alert("Login failed. Please try again.");
+        setErrorMessage(result.error || "Login failed. Please try again.");
+        setIsLoading(false);
         return;
       }
-
-      const result = await response.json();
 
       if (result.token) {
         document.cookie = `token=${result.token}; path=/; Secure;`; // ✅ Store token in cookie
         localStorage.setItem("userToken", result.token); // ✅ Store token in localStorage
 
         setUser(result.user);
-        await syncLocalCartToDB(result.tolen);
+        await syncLocalCartToDB(result.token);
         await syncLocalWishlistToDB(result.token);
-        router.push("/home");
+        router.push("/");
       } else {
-        alert(result.error || "Invalid credential");
+        setErrorMessage(result.error || "Invalid credentials");
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert("Something went wrong.");
+      setErrorMessage("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +130,16 @@ export default function LoginPage() {
             <CardTitle className="text-center">Sign In</CardTitle>
           </CardHeader>
           <CardContent>
+            {errorMessage && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                {errorMessage}
+              </div>
+            )}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+                {successMessage}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <Label htmlFor="email">Email Address</Label>
@@ -165,7 +195,7 @@ export default function LoginPage() {
                     Remember me
                   </Label>
                 </div>
-                <Link href="#" className="text-sm text-emerald-600 hover:underline">
+                <Link href="/forgot-password" className="text-sm text-emerald-600 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -177,15 +207,6 @@ export default function LoginPage() {
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-
-              <div className="relative my-2">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or</span>
-                </div>
-              </div>
-
-              <GoogleSignInButton />
 
               <div className="text-center">
                 <p className="text-sm text-gray-600">

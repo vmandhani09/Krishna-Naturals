@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!body.totalAmount || body.totalAmount < 0) {
+    if (!body.pricing || !body.pricing.total || body.pricing.total < 0) {
       return NextResponse.json(
         { error: "Invalid total amount" },
         { status: 400 }

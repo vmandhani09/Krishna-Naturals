@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Minus, Plus } from "lucide-react";
 import { ProductCard } from "@/components/ui/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ShoppingCart, Star, Truck, Shield, RotateCcw } from "lucide-react";
@@ -216,22 +217,48 @@ export default function ProductDetailPage() {
           {/* Quantity and Add to Cart */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
-              <Select
-                value={quantity.toString()}
-                onValueChange={(value) => setQuantity(Number.parseInt(value))}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[...Array(10)].map((_, i) => (
-                    <SelectItem key={i + 1} value={(i + 1).toString()}>
-                      {i + 1}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Quantity
+              </label>
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 sm:h-12 sm:w-12 border-2 hover:bg-emerald-50 hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                >
+                  <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setQuantity(Math.max(1, value));
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value || parseInt(e.target.value) < 1) {
+                      setQuantity(1);
+                    }
+                  }}
+                  className="w-20 sm:w-24 h-10 sm:h-12 text-center text-base sm:text-lg font-semibold border-2 border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-800 dark:text-white transition-all"
+                  aria-label="Quantity"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 sm:h-12 sm:w-12 border-2 hover:bg-emerald-50 hover:border-emerald-500 transition-colors"
+                  onClick={() => setQuantity((prev) => prev + 1)}
+                  aria-label="Increase quantity"
+                >
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </div>
             </div>
 
             <div className="flex space-x-4">

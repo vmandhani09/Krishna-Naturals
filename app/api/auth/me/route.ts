@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { dbConnect } from "@/lib/dbConnect";
+import User from "@/lib/models/user";
 
 const SECRET_KEY = process.env.JWT_SECRET || "default-secret-key";
 
@@ -26,14 +28,23 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized: Invalid token payload" }, { status: 403 });
       }
 
-      // You can add more user fields here if needed
+      // Fetch user from database to get latest info
+      await dbConnect();
+      const user = await User.findById(decoded.userId).select("-password");
+      
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      // Return user data
       return NextResponse.json({
         message: "User authenticated successfully",
         user: {
-          id: decoded.userId,
-          email: decoded.email,
-          name: decoded.name || "", // Add name if present in token
-          role: decoded.role || "user",
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isVerified: user.isVerified,
         },
       }, { status: 200 });
 

@@ -1,7 +1,9 @@
 import { dbConnect } from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { sendEmail, getVerificationEmailTemplate } from "@/lib/sendEmail";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,10 +16,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid request body format" }, { status: 400 });
     }
 
-    const { name, email, mobile, password, confirmPassword, agreeToTerms } = body;
+    const { name, email, password, confirmPassword, agreeToTerms } = body;
 
     // 🔍 Validate input
-    if (!name || !email || !mobile || !password || !confirmPassword || agreeToTerms !== true) {
+    if (!name || !email || !password || !confirmPassword || agreeToTerms !== true) {
       return NextResponse.json({ error: "All fields are required, and you must agree to the terms" }, { status: 400 });
     }
 
@@ -30,17 +32,44 @@ export async function POST(req: NextRequest) {
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
-      return NextResponse.json({ error: "Email or mobile number is already in use" }, { status: 409 });
+      return NextResponse.json({ error: "Email is already in use" }, { status: 409 });
     }
 
     // 🔒 Hash password securely before saving
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Save new user instance with default cart
-    const newUser = new User({ name, email: normalizedEmail, mobile, password: hashedPassword, cart: [] });
+    // 🔑 Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // ✅ Save new user instance with default cart and verification token
+    const newUser = new User({ 
+      name, 
+      email: normalizedEmail, 
+      password: hashedPassword, 
+      cart: [],
+      isVerified: false,
+      verificationToken,
+      authProvider: "local"
+    });
     await newUser.save();
 
-    return NextResponse.json({ message: "Registration successful!" }, { status: 201 });
+    // 📧 Send verification email
+    const protocol = req.headers.get("x-forwarded-proto") || "http";
+    const host = req.headers.get("host") || "localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`;
+    const verificationLink = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
+    const html = getVerificationEmailTemplate(verificationLink, name);
+    const emailSent = await sendEmail(normalizedEmail, "Verify Your Email - Dryfruit Grove", html);
+
+    if (!emailSent) {
+      console.error("Failed to send verification email");
+      // Still return success, but log the error
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      message: "Registration successful! Please check your email to verify your account." 
+    }, { status: 201 });
 
   } catch (error) {
     console.error("Registration error:", error);

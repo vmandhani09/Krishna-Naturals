@@ -80,14 +80,21 @@ export default function CheckoutPage() {
         sessionStorage.setItem("checkout_pricing", JSON.stringify(pricing));
       }
 
+      // Get token from localStorage or cookie
+      const token = localStorage.getItem("userToken");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           items,
           shippingAddress,
           pricing,
-          paymentMethod: "stripe",
+          paymentMethod: "phonepe",
         }),
       });
 

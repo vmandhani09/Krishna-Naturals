@@ -5,10 +5,10 @@ interface IUser extends Document {
   email: string;
   password?: string;
   role: "user" | "admin";
-  mobile?: string;
   avatar?: string;
-  googleId?: string;
-  authProvider: "local" | "google";
+  authProvider: "local";
+  isVerified: boolean;
+  verificationToken?: string;
   createdAt: Date;
   updatedAt: Date;
   cart: mongoose.Types.ObjectId[];
@@ -22,10 +22,10 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: false },
     role: { type: String, enum: ["user", "admin"], default: "user" },
-    mobile: { type: String },
     avatar: { type: String },
-    googleId: { type: String, index: true, sparse: true, unique: false },
-    authProvider: { type: String, enum: ["local", "google"], default: "local" },
+    authProvider: { type: String, enum: ["local"], default: "local" },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
     cart: [{ type: mongoose.Schema.Types.ObjectId, ref: "CartItem" }],
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],

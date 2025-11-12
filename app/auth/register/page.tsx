@@ -8,14 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, User, Mail, Lock, Phone } from "lucide-react";
+import { Eye, EyeOff, User, Mail, Lock } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    mobile: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
@@ -60,8 +59,12 @@ export default function RegisterPage() {
       }
 
       const result = await response.json();
-      alert(result.message);
-      router.push("/auth/login");
+      if (result.success) {
+        alert("Registration successful! Please check your email to verify your account.");
+        router.push("/auth/login");
+      } else {
+        alert(result.error || "Registration failed. Please try again.");
+      }
 
     } catch (error) {
       console.error("Registration error:", error);
@@ -113,23 +116,6 @@ export default function RegisterPage() {
                       onChange={handleInputChange}
                       className="pl-10"
                       placeholder="Enter your email"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="mobile">Mobile Number</Label>
-                  <div className="relative mt-1">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="mobile"
-                      name="mobile"
-                      type="tel"
-                      value={formData.mobile}
-                      onChange={handleInputChange}
-                      className="pl-10"
-                      placeholder="Enter your mobile number"
                       required
                     />
                   </div>

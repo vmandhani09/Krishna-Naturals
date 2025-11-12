@@ -32,7 +32,7 @@ export interface User {
   email: string;
   password: string;
   role: "user" | "admin";
-  mobile?: string;
+  isVerified: boolean;
   createdAt: Date;
   cart: string[];
   wishlist: string[];

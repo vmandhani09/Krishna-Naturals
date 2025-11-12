@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Truck, Shield, Clock, Star, Leaf, Gift, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +14,41 @@ import { Product } from "@/types"
 export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const token = localStorage.getItem("userToken")
+        if (token) {
+          const response = await fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            if (data?.user) {
+              setUser(data.user)
+            }
+          } else {
+            // Token invalid, clear it
+            localStorage.removeItem("userToken")
+            setUser(null)
+          }
+        }
+      } catch (error) {
+        console.error("Auth check error:", error)
+        setUser(null)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+    
+    checkAuth()
+  }, [])
+
 
   useEffect(() => {
     async function fetchProducts() {

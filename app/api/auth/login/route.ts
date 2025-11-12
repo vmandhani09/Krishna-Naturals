@@ -37,10 +37,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
+    // ✅ Check if email is verified
+    if (!user.isVerified) {
+      return NextResponse.json({ 
+        error: "Please verify your email before logging in. Check your inbox for the verification link." 
+      }, { status: 403 });
+    }
+
     // 🔑 Generate JWT token with secure error handling
     let token;
     try {
-      token = jwt.sign({ userId: user._id.toString(), email: user.email }, SECRET_KEY, { expiresIn: "1h" });
+      token = jwt.sign({ 
+        userId: user._id.toString(), 
+        email: user.email, 
+        name: user.name,
+        role: user.role 
+      }, SECRET_KEY, { expiresIn: "1h" });
     } catch (error) {
       console.error("JWT generation error:", error);
       return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -50,6 +62,12 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       message: "Login successful!",
       token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
 
     response.headers.set(

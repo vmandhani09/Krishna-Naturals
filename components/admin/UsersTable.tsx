@@ -43,8 +43,7 @@ export default function UsersTable() {
     (user) =>
       user.role === "user" &&
       ((user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (user.mobile && user.mobile.toLowerCase().includes(searchTerm.toLowerCase())))
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   const now = new Date();
@@ -134,8 +133,8 @@ export default function UsersTable() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Mobile</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Verified</TableHead>
                   <TableHead>Joined Date</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -147,10 +146,14 @@ export default function UsersTable() {
                       <div className="font-medium text-stone-900">{user.name || "No Name"}</div>
                     </TableCell>
                     <TableCell className="text-stone-600">{user.email}</TableCell>
-                    <TableCell className="text-stone-600">{user.mobile || "N/A"}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
                         {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.isVerified ? "default" : "destructive"} className="capitalize">
+                        {user.isVerified ? "Verified" : "Unverified"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-stone-600">
