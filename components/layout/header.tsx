@@ -7,6 +7,7 @@ import { Menu, X, ShoppingCart, User, Heart, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
+import { useAuth } from "@/hooks/userAuth"; // <-- useAuth hook
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -15,51 +16,22 @@ const navigation = [
   { name: "Contact", href: "/contact" },
 ];
 
-type UserType = {
-  id: string;
-  email: string;
-};
-
-function useUserFromToken() {
-  const [user, setUser] = useState<UserType | null>(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem("userToken");
-    if (!token) return;
-
-    fetch("/api/auth/me", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data?.user) setUser(data.user);
-      });
-  }, []);
-
-  return user;
-}
-
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { cart, getCartItemsCount, fetchCart } = useCart();
   const { wishlist } = useWishlist();
-  const user = useUserFromToken();
+  const { user, setUser, isLoading: isAuthLoading } = useAuth(); // <-- updated auth
 
   // Compute the cart count directly from the cart state.
   const cartCount = useMemo(() => getCartItemsCount(), [cart, getCartItemsCount]);
 
-  // One useEffect to fetch cart initially and update it when "cartUpdated" fires.
+  // Fetch cart and listen for updates
   useEffect(() => {
-    // Initial fetch when the header mounts.
     fetchCart();
-    const handleCartUpdate = async () => {
-      await fetchCart();
-    };
+    const handleCartUpdate = async () => await fetchCart();
     window.addEventListener("cartUpdated", handleCartUpdate);
-    return () => {
-      window.removeEventListener("cartUpdated", handleCartUpdate);
-    };
+    return () => window.removeEventListener("cartUpdated", handleCartUpdate);
   }, [fetchCart]);
 
   const isActive = (href: string) => pathname === href;
@@ -68,12 +40,9 @@ export function Header() {
     try {
       const res = await fetch("/api/auth/logout", { method: "GET", credentials: "include" });
       if (res.ok) {
-        // Remove userToken from localStorage
         localStorage.removeItem("userToken");
-        // Remove token cookie (set expiry in the past)
         document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure;";
-        localStorage.setItem("refreshUser", Date.now().toString());
-        window.location.reload();
+        setUser(null); // <-- update auth state immediately
       } else {
         alert("Logout failed. Please try again.");
       }
@@ -82,7 +51,6 @@ export function Header() {
       alert("Something went wrong!");
     }
   };
-
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50 border-b border-stone-200">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Top navigation">
@@ -100,10 +68,11 @@ export function Header() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive(item.href)
+                className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                  isActive(item.href)
                     ? "text-primary border-b-2 border-primary"
                     : "text-stone-700 hover:text-primary hover:border-b-2 hover:border-primary/40"
-                  }`}
+                }`}
                 aria-current={isActive(item.href) ? "page" : undefined}
               >
                 {item.name}
@@ -140,7 +109,7 @@ export function Header() {
             </Link>
 
             {/* Show user's name if logged in */}
-            {user ? (
+            {!isAuthLoading && (user ? (
               <>
                 <Button variant="ghost" size="sm" className="hover:bg-stone-100 transition-colors">
                   <User className="h-5 w-5 mr-2" /> {user.email}
@@ -157,11 +126,17 @@ export function Header() {
                   Login
                 </Button>
               </Link>
-            )}
+            ))}
 
             {/* Mobile menu button */}
             <div className="md:hidden">
-              <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-expanded="false" aria-label="Toggle navigation menu">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-expanded="false"
+                aria-label="Toggle navigation menu"
+              >
                 {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </Button>
             </div>
@@ -176,8 +151,9 @@ export function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${isActive(item.href) ? "text-primary bg-secondary" : "text-stone-700 hover:text-primary hover:bg-stone-50"
-                    }`}
+                  className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${
+                    isActive(item.href) ? "text-primary bg-secondary" : "text-stone-700 hover:text-primary hover:bg-stone-50"
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}

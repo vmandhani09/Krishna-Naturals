@@ -17,7 +17,7 @@ export default function SettingsForm() {
     siteName: "Dryfruit Grove",
     siteDescription: "Premium quality dry fruits, nuts, seeds, and spices",
     contactEmail: "info@krishnanaturals.com",
-    contactPhone: "+91 9876543210",
+    contactPhone: "+91 9359682328",
     address: "123 Spice Market Street, Mumbai, Maharashtra 400001",
     emailNotifications: true,
     orderNotifications: true,

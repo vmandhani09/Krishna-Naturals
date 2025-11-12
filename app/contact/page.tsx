@@ -62,7 +62,7 @@ export default function ContactPage() {
               {
                 icon: <Phone className="h-6 w-6 text-emerald-600" />,
                 title: "Phone",
-                lines: ["+91 9876543210", "Mon-Sat, 9AM-7PM"],
+                lines: ["+91 9359682328", "Mon-Sat, 9AM-7PM"],
               },
               {
                 icon: <Mail className="h-6 w-6 text-emerald-600" />,

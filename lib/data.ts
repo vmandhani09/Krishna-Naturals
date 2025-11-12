@@ -7,7 +7,7 @@ export const users: User[] = [
     email: "priya@example.com",
     password: "password123",
     role: "user",
-    mobile: "+91 9876543210",
+    mobile: "+91 9359682328",
     createdAt: new Date("2024-01-15"),
     cart: [],
     wishlist: [],
@@ -90,7 +90,7 @@ export const orders: Order[] = [
     shippingAddress: {
       name: "Priya Sharma",
       email: "priya@example.com",
-      mobile: "+91 9876543210",
+      mobile: "+91 9359682328",
       address: "123 Main Street, Andheri West",
       city: "Mumbai",
       pincode: "400058",

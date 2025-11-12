@@ -1,6 +1,6 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import { syncLocalDataToDB } from "@/lib/syncLocalData";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,71 +9,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { useCart } from "@/hooks/use-cart"
+import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
-
-
+import { useAuth } from "@/hooks/userAuth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({ email: "", password: "", rememberMe: false });
+  const { setUser } = useAuth(); // reactive auth state
   const { syncLocalCartToDB } = useCart();
   const { syncLocalWishlistToDB } = useWishlist();
+
+  const [formData, setFormData] = useState({ email: "", password: "", rememberMe: false });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState(null); // ✅ Track logged-in user state
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Show messages from query params (email verification)
   useEffect(() => {
-    // Check for verification success message in URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("verified") === "true") {
       setSuccessMessage("Email verified successfully! You can now log in.");
     }
     if (urlParams.get("error")) {
       const error = urlParams.get("error");
-      if (error === "invalid_token") {
-        setErrorMessage("Invalid or expired verification token.");
-      } else if (error === "already_verified") {
-        setSuccessMessage("Your email is already verified. You can now log in.");
-      } else if (error === "verification_failed") {
-        setErrorMessage("Email verification failed. Please try again.");
-      }
+      if (error === "invalid_token") setErrorMessage("Invalid or expired verification token.");
+      else if (error === "already_verified") setSuccessMessage("Your email is already verified. You can now log in.");
+      else if (error === "verification_failed") setErrorMessage("Email verification failed. Please try again.");
     }
   }, []);
-
-  useEffect(() => {
-    async function syncWishlist() {
-      const localWishlist = localStorage.getItem("wishlist");
-      if (!localWishlist) return;
-
-      try {
-        const productIds = JSON.parse(localWishlist);
-        if (!Array.isArray(productIds) || productIds.length === 0) return;
-
-        const response = await fetch("/api/user/wishlist", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productIds }),
-        });
-
-        if (response.ok) {
-          localStorage.removeItem("wishlist"); // Clear local wishlist after sync
-          const data = await response.json();
-          console.log("Wishlist synced:", data.wishlist);
-        } else {
-          console.error("Wishlist sync failed");
-        }
-      } catch (error) {
-        console.error("Error syncing wishlist:", error);
-      }
-    }
-
-    if (user) {
-      syncWishlist();
-    }
-  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -83,6 +47,8 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -100,23 +66,32 @@ export default function LoginPage() {
       }
 
       if (result.token) {
-        document.cookie = `token=${result.token}; path=/; Secure;`; // ✅ Store token in cookie
-        localStorage.setItem("userToken", result.token); // ✅ Store token in localStorage
+        // Save token
+        localStorage.setItem("userToken", result.token);
 
+        // Update reactive user state (Header will reflect immediately)
         setUser(result.user);
+
+        // Notify any listeners (optional)
+        window.dispatchEvent(new Event("storage"));
+
+        // Sync cart/wishlist from localStorage to DB
         await syncLocalCartToDB(result.token);
         await syncLocalWishlistToDB(result.token);
+
+        // Redirect to home
         router.push("/");
       } else {
         setErrorMessage(result.error || "Invalid credentials");
       }
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (err) {
+      console.error("Login error:", err);
       setErrorMessage("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
@@ -189,7 +164,9 @@ export default function LoginPage() {
                   <Checkbox
                     id="rememberMe"
                     checked={formData.rememberMe}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rememberMe: checked as boolean }))}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, rememberMe: checked as boolean }))
+                    }
                   />
                   <Label htmlFor="rememberMe" className="text-sm">
                     Remember me
@@ -200,11 +177,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
 

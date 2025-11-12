@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { usePathname } from "next/navigation"
-import { Header } from "@/components/layout/header"
-import { Footer } from "@/components/layout/footer"
-import { LocalUserProvider } from "@/components/LocalUserProvider"
+import { usePathname } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { LocalUserProvider } from "@/components/LocalUserProvider"; // provides useAuth for client
 
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  
+  const pathname = usePathname();
+
   // Check if current path is admin route
-  const isAdminRoute = pathname.startsWith('/admin')
-  
+  const isAdminRoute = pathname.startsWith("/admin");
+
   if (isAdminRoute) {
     // Admin routes: no header/footer, full height
-    return <div className="min-h-screen">{children}</div>
+    return <div className="min-h-screen">{children}</div>;
   }
-  
-  // User routes: with header/footer
+
+  // Client routes: wrap in LocalUserProvider so Header reacts to login/logout
   return (
-    <div className="min-h-screen flex flex-col">
-      <LocalUserProvider>
-      <Header />
-      <main className="flex-1">{children}</main>
-      <Footer />
-      </LocalUserProvider>
-    </div>
-  )
+    <LocalUserProvider>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    </LocalUserProvider>
+  );
 }

@@ -59,11 +59,11 @@ export function Footer() {
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4 text-primary" />
-                <span className="text-stone-700">+91 9876543210</span>
+                <span className="text-stone-700">+91 9359682328</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4 text-primary" />
-                <span className="text-stone-700">support@dryfruitgrove.com</span>
+                <span className="text-stone-700">info.dryfruitgrove@gmail.com</span>
               </div>
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-primary" />
@@ -75,7 +75,7 @@ export function Footer() {
 
         <div className="border-t border-border mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-stone-700 text-sm">© 2024 Dryfruit Grove. All rights reserved.</p>
+            <p className="text-stone-700 text-sm">© 2025 Dryfruit Grove. All rights reserved.</p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="#" className="text-stone-700 hover:text-primary text-sm transition-colors">
                 Privacy Policy
