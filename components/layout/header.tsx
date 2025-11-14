@@ -139,15 +139,6 @@ export function Header() {
                   </Button>
                 </Link>
 
-                {/* Logout */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-red-500 text-red-500 hover:bg-red-50"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-5 w-5 mr-1" /> Logout
-                </Button>
               </>
             ) : (
               <Link href="/auth/login">

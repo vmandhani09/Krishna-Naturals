@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,11 @@ import { useAuth, AUTH_TOKEN_EVENT } from "@/hooks/userAuth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // READ REDIRECT PARAM (default to /)
+  const redirectTo = searchParams.get("redirect") || "/";
+
   const { setUser } = useAuth();
   const { syncLocalCartToDB } = useCart();
   const { syncLocalWishlistToDB } = useWishlist();
@@ -31,7 +36,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-
     if (params.get("verified") === "true") {
       setSuccessMessage("Email verified successfully! You can now login.");
     }
@@ -67,25 +71,21 @@ export default function LoginPage() {
 
       const token = data.token;
 
-      // ===========================
-      // STORE JWT IN BOTH PLACES
-      // ===========================
+      // Store JWT
       localStorage.setItem("userToken", token);
       document.cookie = `token=${token}; path=/; SameSite=Lax;`;
 
-      // ===========================
-      // UPDATE AUTH STATE
-      // ===========================
       setUser(data.user);
       window.dispatchEvent(
-        new CustomEvent(AUTH_TOKEN_EVENT, { detail: token }),
+        new CustomEvent(AUTH_TOKEN_EVENT, { detail: token })
       );
 
-      // SYNC CART + WISHLIST
+      // Sync local → DB
       await syncLocalCartToDB(token);
       await syncLocalWishlistToDB(token);
 
-      router.push("/");
+      // 🔥 REDIRECT BACK
+      router.push(redirectTo);
     } catch (err) {
       console.error("Login error:", err);
       setErrorMessage("Something went wrong. Please try again.");
@@ -120,6 +120,7 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* EMAIL */}
               <div>
                 <Label>Email Address</Label>
                 <div className="relative mt-1">
@@ -136,6 +137,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* PASSWORD */}
               <div>
                 <Label>Password</Label>
                 <div className="relative mt-1">
@@ -159,7 +161,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* 🔥 Forgot Password + Remember Me section restored */}
+              {/* REMEMBER / FORGOT */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -183,6 +185,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
+              {/* SUBMIT BUTTON */}
               <Button
                 type="submit"
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -191,11 +194,14 @@ export default function LoginPage() {
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
 
+              {/* SIGN UP WITH REDIRECT */}
               <div className="text-center">
                 <p className="text-sm text-gray-600">
                   Don’t have an account?{" "}
                   <Link
-                    href="/auth/register"
+                    href={`/auth/register?redirect=${encodeURIComponent(
+                      redirectTo
+                    )}`}
                     className="text-emerald-600 hover:underline font-medium"
                   >
                     Sign Up

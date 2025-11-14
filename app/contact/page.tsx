@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { MapPin, Phone, Mail, Clock, Send } from "lucide-react"
 import FAQSection from "@/components/ui/FAQSection"
+import { toast } from "sonner"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -24,17 +25,32 @@ export default function ContactPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false)
-      alert("Message sent successfully! We will get back to you soon.")
-      setFormData({ name: "", email: "", message: "" })
-    }, 1000)
-  }
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to send message");
+        setIsSubmitting(false);
+        return;
+      }
+
+      toast.success("Message sent successfully!");
+      setFormData({ name: "", email: "", message: "" });
+    } catch (err) {
+      toast.error("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -67,7 +83,7 @@ export default function ContactPage() {
               {
                 icon: <Mail className="h-6 w-6 text-emerald-600" />,
                 title: "Email",
-                lines: ["info@krishnanaturals.com", "We reply within 24hrs"],
+                lines: ["info.dryfruitgrove@gmail.com", "We reply within 24hrs"],
               },
               {
                 icon: <MapPin className="h-6 w-6 text-emerald-600" />,
@@ -98,23 +114,23 @@ export default function ContactPage() {
 
           {/* Map Card */}
           <Card className="h-full">
-  <CardHeader>
-    <CardTitle>Find Us</CardTitle>
-  </CardHeader>
-  <CardContent className="h-[300px] p-0 overflow-hidden rounded-b-lg">
-    <iframe
-     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d60304.78536754498!2d77.28392466953126!3d19.149328549817582!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bd1d6383bb5a859%3A0x4566f2e227148be!2sShri%20Krishna%20Trading!5e0!3m2!1sen!2sin!4v1749375062631!5m2!1sen!2sin"
-      width="100%"
-      height="100%"
-      style={{ border: 0 }}
-      allowFullScreen
-      loading="lazy"
-      referrerPolicy="no-referrer-when-downgrade"
-      title="Google Map"
-      className="w-full h-full"
-    />
-  </CardContent>
-</Card>
+            <CardHeader>
+              <CardTitle>Find Us</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] p-0 overflow-hidden rounded-b-lg">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d60304.78536754498!2d77.28392466953126!3d19.149328549817582!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bd1d6383bb5a859%3A0x4566f2e227148be!2sShri%20Krishna%20Trading!5e0!3m2!1sen!2sin!4v1749375062631!5m2!1sen!2sin"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Google Map"
+                className="w-full h-full"
+              />
+            </CardContent>
+          </Card>
 
         </div>
 

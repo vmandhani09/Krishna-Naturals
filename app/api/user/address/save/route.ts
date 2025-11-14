@@ -1,4 +1,3 @@
-// app/api/user/address/save/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { dbConnect } from "@/lib/dbConnect";
@@ -37,13 +36,26 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    const requiredFields = ["fullName", "phone", "pincode", "house", "street", "city", "state"] as const;
+    const requiredFields = [
+      "fullName",
+      "phone",
+      "pincode",
+      "house",
+      "street",
+      "city",
+      "state",
+    ] as const;
+
     const missingField = requiredFields.find(
-      (field) => typeof body[field] !== "string" || body[field].trim().length === 0,
+      (field) =>
+        typeof body[field] !== "string" || body[field].trim().length === 0
     );
 
     if (missingField) {
-      return NextResponse.json({ error: `Missing field: ${missingField}` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Missing field: ${missingField}` },
+        { status: 400 }
+      );
     }
 
     const newAddress = {
@@ -55,7 +67,7 @@ export async function POST(req: NextRequest) {
       landmark: body.landmark || "",
       city: body.city,
       state: body.state,
-      isDefault: true,
+      isDefault: false,
     };
 
     const user = await User.findById(decoded.userId);
@@ -64,7 +76,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    user.addresses = [newAddress];
+    // 🔥 MULTIPLE ADDRESS FIX: push instead of replace
+    if (!Array.isArray(user.addresses)) {
+      user.addresses = [];
+    }
+
+    user.addresses.push(newAddress);
+
+    // 🔥 First address should be default
+    if (user.addresses.length === 1) {
+      user.addresses[0].isDefault = true;
+    }
 
     await user.save();
 
@@ -74,6 +96,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Save Address Error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

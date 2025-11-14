@@ -9,10 +9,30 @@ interface LocalCartItem {
   quantity: number;
 }
 
+/* ----------------------------------------------
+ 🟢 Deduplicate items (same productId + weight)
+---------------------------------------------- */
+function dedupeCart(items: LocalCartItem[]) {
+  const map: Record<string, LocalCartItem> = {};
+
+  for (const item of items) {
+    const key = `${item.productId}-${item.weight}`;
+    if (!map[key]) {
+      map[key] = { ...item };
+    } else {
+      map[key].quantity += item.quantity;
+    }
+  }
+  return Object.values(map);
+}
+
 export function useCart() {
   const [cart, setCart] = useState<(CartItem & { product: Product | null })[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ----------------------------------------------
+   Helpers
+  ---------------------------------------------- */
   const getLocalCart = (): LocalCartItem[] => {
     try {
       return JSON.parse(localStorage.getItem("guestCart") || "[]");
@@ -25,8 +45,12 @@ export function useCart() {
     localStorage.setItem("guestCart", JSON.stringify(items));
   };
 
+  /* ----------------------------------------------
+   Fetch product details for cart items
+  ---------------------------------------------- */
   const fetchProductDetails = async (items: any[]) => {
     if (!items.length) return [];
+
     const ids = [...new Set(items.map((item) => item.productId))];
 
     try {
@@ -35,6 +59,7 @@ export function useCart() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
+
       const data = await res.json();
       const products = Array.isArray(data.products) ? data.products : [];
 
@@ -42,15 +67,25 @@ export function useCart() {
         ...item,
         product: products.find((p: Product) => p._id === item.productId) || null,
       }));
-    } catch (error) {
-      console.error("Error fetching product details", error);
+    } catch (err) {
+      console.error("Product fetch error:", err);
       return items.map((item) => ({ ...item, product: null }));
     }
   };
 
-  const syncLocalCartToDB = async (userToken: string) => {
+  /* ----------------------------------------------
+   SYNC ONLY ONCE after login/register
+  ---------------------------------------------- */
+  const syncLocalCartToDB = async (token: string) => {
+    const alreadySynced = localStorage.getItem("cartSynced");
+
+    if (alreadySynced === "true") return; // <-- Prevent double sync
+
     const localCart = getLocalCart();
-    if (!localCart.length) return;
+    if (!localCart.length) {
+      localStorage.setItem("cartSynced", "true");
+      return;
+    }
 
     try {
       for (const item of localCart) {
@@ -58,7 +93,7 @@ export function useCart() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${userToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             productId: item.productId,
@@ -67,36 +102,45 @@ export function useCart() {
           }),
         });
       }
+
+      // Clear guest cart & mark as synced
       setLocalCart([]);
+      localStorage.setItem("cartSynced", "true");
+
       window.dispatchEvent(new Event("cartUpdated"));
     } catch (err) {
-      console.error("Cart sync failed", err);
+      console.error("Sync failed:", err);
     }
   };
 
+  /* ----------------------------------------------
+   MAIN FETCH CART FUNCTION
+   IMPORTANT: Does NOT sync inside fetchCart.
+  ---------------------------------------------- */
   const fetchCart = useCallback(async () => {
     setLoading(true);
-    const userToken = localStorage.getItem("userToken");
 
-    if (userToken) {
-      await syncLocalCartToDB(userToken);
+    const token = localStorage.getItem("userToken");
+
+    if (token) {
       const res = await fetch("/api/user/cart", {
-        headers: { Authorization: `Bearer ${userToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
+
       const { cart: dbCart } = await res.json();
+
       const items = Array.isArray(dbCart)
         ? dbCart.map((item: any) => ({
             productId: item.productId,
             weight: item.weight,
             quantity: item.quantity,
-            userId: item.userId,
           }))
         : [];
 
       const merged = await fetchProductDetails(items);
       setCart(merged);
     } else {
-      const localCart = getLocalCart();
+      let localCart = dedupeCart(getLocalCart());
       const merged = await fetchProductDetails(localCart);
       setCart(merged);
     }
@@ -104,109 +148,121 @@ export function useCart() {
     setLoading(false);
   }, []);
 
+  /* ----------------------------------------------
+   INIT
+  ---------------------------------------------- */
   useEffect(() => {
     fetchCart();
     window.addEventListener("cartUpdated", fetchCart);
     return () => window.removeEventListener("cartUpdated", fetchCart);
   }, [fetchCart]);
 
+  /* ----------------------------------------------
+   ADD TO CART (Guest + Logged-in)
+  ---------------------------------------------- */
   const addToCart = async (productId: string, weight: string, quantity = 1) => {
-    const userToken = localStorage.getItem("userToken");
-    console.log("addToCart called", { productId, weight, quantity, userToken });
+    const token = localStorage.getItem("userToken");
 
-    if (userToken) {
-      const res = await fetch("/api/user/cart", {
+    if (token) {
+      // DB cart update
+      await fetch("/api/user/cart", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ productId, weight, quantity }),
       });
-      const data = await res.json();
-      console.log("API response:", data);
-      if (!res.ok) {
-        console.error("Failed to add to cart:", data);
-      }
     } else {
+      // Guest cart update
       let localCart = getLocalCart();
       const index = localCart.findIndex(
-        (item) => item.productId === productId && item.weight === weight  
+        (item) => item.productId === productId && item.weight === weight
       );
 
       if (index !== -1) {
-        localCart[index].quantity = quantity; // <-- SET instead of ADD
+        localCart[index].quantity += quantity;
       } else {
         localCart.push({ productId, weight, quantity });
       }
+
+      localCart = dedupeCart(localCart);
       setLocalCart(localCart);
-      console.log("Updated guest cart:", localCart);
     }
 
     window.dispatchEvent(new Event("cartUpdated"));
   };
 
+  /* ----------------------------------------------
+   REMOVE ITEM
+  ---------------------------------------------- */
   const removeFromCart = async (productId: string, weight: string) => {
-    const userToken = localStorage.getItem("userToken");
-    if (userToken) {
+    const token = localStorage.getItem("userToken");
+
+    if (token) {
       await fetch("/api/user/cart", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ productId, weight }),
       });
     } else {
-      let localCart = getLocalCart();
-      localCart = localCart.filter(
-        (item) => !(String(item.productId) === productId && String(item.weight) === weight)
+      let localCart = getLocalCart().filter(
+        (item) => !(item.productId === productId && item.weight === weight)
       );
       setLocalCart(localCart);
     }
+
     window.dispatchEvent(new Event("cartUpdated"));
   };
 
+  /* ----------------------------------------------
+   UPDATE QUANTITY
+   ---------------------------------------------- */
   const updateQuantity = async (productId: string, weight: string, quantity: number) => {
-    // Optimistically update UI
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        String(item.productId) === String(productId) && String(item.weight) === String(weight)
+    setCart((prev) =>
+      prev.map((item) =>
+        item.productId === productId && item.weight === weight
           ? { ...item, quantity }
           : item
       )
     );
 
-    const userToken = localStorage.getItem("userToken");
-    if (userToken) {
+    const token = localStorage.getItem("userToken");
+
+    if (token) {
       await fetch("/api/user/cart", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ productId, weight, quantity }),
       });
-      // Do NOT call fetchCart or dispatch cartUpdated here!
     } else {
-      let localCart = getLocalCart();
-      localCart = localCart.map((item) =>
+      let localCart = getLocalCart().map((item) =>
         item.productId === productId && item.weight === weight
           ? { ...item, quantity }
           : item
       );
+
+      localCart = dedupeCart(localCart);
       setLocalCart(localCart);
-      // Do NOT dispatch cartUpdated here!
     }
   };
 
+  /* ----------------------------------------------
+   CLEAR CART
+  ---------------------------------------------- */
   const clearCart = async () => {
-    const userToken = localStorage.getItem("userToken");
+    const token = localStorage.getItem("userToken");
 
-    if (userToken) {
+    if (token) {
       await fetch("/api/user/cart", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${userToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
     } else {
       setLocalCart([]);
@@ -215,14 +271,16 @@ export function useCart() {
     window.dispatchEvent(new Event("cartUpdated"));
   };
 
-  const getCartItemsCount = () => cart.reduce((total, item) => total + item.quantity, 0);
+  /* ----------------------------------------------
+   GETTERS
+  ---------------------------------------------- */
+  const getCartItemsCount = () =>
+    cart.reduce((n, item) => n + item.quantity, 0);
 
   const getCartTotal = () =>
     cart.reduce((total, item) => {
       const price =
-        item.product && Array.isArray(item.product.weights)
-          ? item.product.weights.find((w) => w.label === item.weight)?.price || 0
-          : 0;
+        item.product?.weights?.find((w) => w.label === item.weight)?.price || 0;
       return total + price * item.quantity;
     }, 0);
 

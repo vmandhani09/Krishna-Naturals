@@ -1,31 +1,32 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-const PROTECTED_ROUTES = ["/account", "/cart", "/wishlist", "/checkout"];
-
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  // Allow all public routes
-  if (!PROTECTED_ROUTES.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // Read token from cookies (middleware CANNOT read localStorage)
+export function middleware(req : any) {
   const token = req.cookies.get("token")?.value;
+  const url = req.nextUrl.pathname;
 
-  if (!token) {
-    const loginUrl = new URL("/auth/login", req.url);
-    return NextResponse.redirect(loginUrl);
+  const protectedRoutes = [
+    "/checkout",
+    "/account",
+    "/orders",
+    "/admin"
+  ];
+
+  if (protectedRoutes.some((route) => url.startsWith(route))) {
+    if (!token) {
+      const loginUrl = new URL("/auth/login", req.url);
+      loginUrl.searchParams.set("redirect", url);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();
 }
+
 export const config = {
   matcher: [
+    "/checkout",
     "/account/:path*",
-    "/cart/:path*",
-    "/wishlist/:path*",
-    "/checkout/:path*",
+    "/orders/:path*",
+    "/admin/:path*",
   ],
 };
-
