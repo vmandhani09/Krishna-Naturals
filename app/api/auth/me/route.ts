@@ -7,50 +7,47 @@ const SECRET_KEY = process.env.JWT_SECRET || "default-secret-key";
 
 export async function GET(req: NextRequest) {
   try {
-    // Prefer Authorization header, fallback to cookie
-    const authHeader = req.headers.get("Authorization");
+    const headerToken = req.headers.get("authorization");
     const cookieToken = req.cookies.get("token")?.value;
-    let token: string | null = null;
 
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.replace("Bearer ", "");
-    } else if (cookieToken) {
-      token = cookieToken;
-    }
+    const token =
+      headerToken?.startsWith("Bearer ")
+        ? headerToken.slice(7)
+        : cookieToken;
 
     if (!token) {
       return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 });
     }
 
+    let decoded: JwtPayload;
     try {
-      const decoded = jwt.verify(token, SECRET_KEY) as JwtPayload;
-      if (!decoded || typeof decoded !== "object" || !decoded.userId || !decoded.email) {
-        return NextResponse.json({ error: "Unauthorized: Invalid token payload" }, { status: 403 });
-      }
-
-      // Fetch user from database to get latest info
-      await dbConnect();
-      const user = await User.findById(decoded.userId).select("-password");
-      
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-
-      // Return user data
-      return NextResponse.json({
-        message: "User authenticated successfully",
-        user: {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          isVerified: user.isVerified,
-        },
-      }, { status: 200 });
-
-    } catch (jwtError) {
+      decoded = jwt.verify(token, SECRET_KEY) as JwtPayload;
+    } catch {
       return NextResponse.json({ error: "Unauthorized: Invalid or expired token" }, { status: 401 });
     }
+
+    if (!decoded || typeof decoded !== "object" || !decoded.userId) {
+      return NextResponse.json({ error: "Unauthorized: Invalid token payload" }, { status: 401 });
+    }
+
+    await dbConnect();
+    const user = await User.findById(decoded.userId).select("-password");
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      {
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          addresses: user.addresses ?? [],
+        },
+      },
+      { status: 200 },
+    );
   } catch (err) {
     console.error("Auth Error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

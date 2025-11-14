@@ -1,212 +1,441 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, User, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
+
+  const [step, setStep] = useState<"info" | "email" | "otp" | "password">("info");
+
   const [formData, setFormData] = useState({
     name: "",
+    surname: "",
     email: "",
     password: "",
     confirmPassword: "",
-    agreeToTerms: false,
   });
+
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const [otp, setOtp] = useState(Array(6).fill(""));
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verified, setVerified] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // ---------------- PASSWORD STRENGTH ----------------
+  const checkStrength = (password: string) => {
+    if (password.length < 8) return "Weak";
+    if (/[A-Z]/.test(password) && /\d/.test(password) && /[@$!%*?&#]/.test(password))
+      return "Strong";
+    return "Medium";
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "password") setPasswordStrength(checkStrength(value));
+  };
+
+  // ---------------- STEP 1: NAME ----------------
+  const handleNextToEmail = () => {
+    if (!formData.name.trim() || !formData.surname.trim()) {
+      toast.error("Enter both name and surname");
+      return;
+    }
+    setStep("email");
+  };
+
+  // ---------------- STEP 2: SEND OTP (with email check) ----------------
+  const handleSendOtp = async () => {
+    if (sendingOtp || resendTimer > 0) return;
+    setSendingOtp(true);
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Enter a valid email address");
+      setSendingOtp(false);
+      return;
+    }
+
+    try {
+      const checkRes = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const checkData = await checkRes.json();
+
+      if (!checkRes.ok) {
+        toast.error(checkData.error || "Email already registered");
+
+        // Auto-focus email field for correction
+        const input = document.getElementById("email-input") as HTMLInputElement;
+        input?.focus();
+        input?.select();
+
+        setSendingOtp(false);
+        return;
+      }
+
+      // EMAIL IS FREE → SEND OTP
+      const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(randomOtp);
+
+      await fetch("/api/auth/send-register-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, otp: randomOtp }),
+      });
+
+      toast.success("OTP sent!");
+
+      // reset otp inputs
+      setOtp(["", "", "", "", "", ""]);
+      setResendTimer(60);
+      setStep("otp");
+
+    } catch {
+      toast.error("Error sending OTP");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // ---------------- OTP TIMER ----------------
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const t = setTimeout(() => setResendTimer((t) => t - 1), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [resendTimer]);
+
+  // ---------------- AUTO FOCUS FIRST OTP BOX ----------------
+  useEffect(() => {
+    if (step === "otp") {
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 150);
+    }
+  }, [step]);
+
+  // ---------------- OTP INPUT HANDLING ----------------
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d?$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && otp[index] === "" && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = () => {
+    const enteredOtp = otp.join("").trim();
+    const originalOtp = generatedOtp.trim();
+
+    if (enteredOtp.length !== 6) {
+      toast.error("Enter all 6 digits");
+      return;
+    }
+
+    if (enteredOtp === originalOtp) {
+      setVerified(true);
+      toast.success("Email verified successfully!");
+      setStep("password");
+    } else {
+      toast.error("Incorrect OTP");
+    }
+  };
+
+  // ---------------- FINAL REGISTER ----------------
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
-      return;
-    }
-
-    if (!formData.agreeToTerms) {
-      alert("Please agree to the terms and conditions!");
-      return;
-    }
+    if (!verified) return toast.error("Verify your email first");
+    if (formData.password !== formData.confirmPassword)
+      return toast.error("Passwords do not match");
+    if (
+      !/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,20}$/.test(formData.password)
+    )
+      return toast.error("Password must be strong.");
 
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: `${formData.name} ${formData.surname}`,
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      // 🔍 Ensure response is valid before parsing JSON
-      if (!response.ok) {
-        const errorText = await response.text(); // Logs raw error response
-        console.error("Registration API error:", errorText);
-        alert("Registration failed. Please try again.");
-        return;
-      }
+      const result = await res.json();
 
-      const result = await response.json();
       if (result.success) {
-        alert("Registration successful! Please check your email to verify your account.");
-        router.push("/auth/login");
-      } else {
-        alert(result.error || "Registration failed. Please try again.");
-      }
-
-    } catch (error) {
-      console.error("Registration error:", error);
-      alert("Something went wrong!");
+        toast.success("Account created!");
+        router.push("/login");
+      } else toast.error(result.error);
+    } catch {
+      toast.error("Registration error");
     } finally {
       setIsLoading(false);
     }
   };
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-emerald-600">Dryfruit Grove</h1>
-            <p className="text-gray-600 mt-2">Create your account to get started</p>
-          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Sign Up</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <div className="relative mt-1">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="pl-10"
-                      placeholder="Enter your full name"
-                      required
-                    />
-                  </div>
-                </div>
+  // ---------------- UI ----------------
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center px-4 py-10">
+      <Card className="max-w-md w-full shadow-lg border border-emerald-200">
+        <CardHeader>
+          <CardTitle className="text-center text-2xl font-bold text-emerald-700">
+            Create Your Account
+          </CardTitle>
+        </CardHeader>
 
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative mt-1">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="pl-10"
-                      placeholder="Enter your email"
-                      required
-                    />
-                  </div>
-                </div>
+        <CardContent>
 
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative mt-1">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="pl-10 pr-10"
-                      placeholder="Create a password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+          {/* STEP 1: NAME */}
+          {step === "info" && (
+            <div className="space-y-4">
+              <Label>First Name</Label>
+              <Input name="name" value={formData.name} onChange={handleChange} placeholder="Enter your first name" />
 
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <div className="relative mt-1">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className="pl-10 pr-10"
-                      placeholder="Confirm your password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+              <Label>Last Name</Label>
+              <Input name="surname" value={formData.surname} onChange={handleChange} placeholder="Enter your surname" />
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="agreeToTerms"
-                    checked={formData.agreeToTerms}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeToTerms: checked as boolean }))}
+              <Button className="w-full bg-emerald-600 mt-4" onClick={handleNextToEmail}>
+                Next
+              </Button>
+            </div>
+          )}
+
+          {/* STEP 2: EMAIL */}
+          {step === "email" && (
+            <div className="space-y-4">
+              <Label>Email Address</Label>
+              <Input
+                id="email-input"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="example@gmail.com"
+              />
+
+              <Button
+                className="w-full bg-emerald-600"
+                onClick={handleSendOtp}
+                disabled={sendingOtp || resendTimer > 0}
+              >
+                {sendingOtp
+                  ? "Sending..."
+                  : resendTimer > 0
+                    ? `Resend OTP in ${resendTimer}s`
+                    : "Send OTP"}
+              </Button>
+            </div>
+          )}
+
+          {/* STEP 3: OTP */}
+          {step === "otp" && (
+            <div className="space-y-4 text-center">
+              <Label className="block text-lg font-medium mb-2">Enter 6-digit OTP</Label>
+
+              <div className="flex justify-center gap-2">
+                {otp.map((digit, index) => (
+                  <Input
+                    key={index}
+                    ref={(el) => {
+                      otpRefs.current[index] = el;
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    className="w-12 h-12 text-center text-xl font-bold border-emerald-400 focus:ring-emerald-500"
                   />
-                  <Label htmlFor="agreeToTerms" className="text-sm">
-                    I agree to the{" "}
-                    <Link href="#" className="text-emerald-600 hover:underline">
-                      Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="#" className="text-emerald-600 hover:underline">
-                      Privacy Policy
-                    </Link>
-                  </Label>
-                </div>
+                ))}
+              </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Creating account..." : "Create Account"}
-                </Button>
+              <Button className="w-full bg-emerald-600 mt-3" onClick={handleVerifyOtp}
+                disabled={otp.join("").length !== 6}
+              >
+                Verify OTP
+              </Button>
+            </div>
+          )}
 
-                <div className="text-center">
-                  <p className="text-sm text-gray-600">
-                    Already have an account?{" "}
-                    <Link href="/auth/login" className="text-emerald-600 hover:underline font-medium">
-                      Sign in
-                    </Link>
-                  </p>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+          {/* STEP 4: PASSWORD */}
+{step === "password" && (
+  <form onSubmit={handleRegister} className="space-y-6">
+
+    {/* Password Input */}
+    <div>
+      <Label>Password</Label>
+      <div className="relative">
+        <Input
+          name="password"
+          type={showPassword ? "text" : "password"}
+          value={formData.password}
+          onChange={(e) => {
+            // prevent beyond max 20 chars
+            if (e.target.value.length <= 20) {
+              handleChange(e);
+            }
+          }}
+          maxLength={20}
+          placeholder="Create a strong password"
+          className="pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-3 text-gray-500"
+        >
+          {showPassword ? <EyeOff /> : <Eye />}
+        </button>
       </div>
-    )
-  }
+
+      {/* PASSWORD REQUIREMENTS */}
+      <div className="mt-3 space-y-1 text-sm">
+        <p
+          className={`${
+            formData.password.length >= 8 ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {formData.password.length >= 8 ? "✔" : "✖"} Minimum 8 characters
+        </p>
+
+        <p
+          className={`${
+            formData.password.length <= 20 && formData.password.length > 0
+              ? "text-green-600"
+              : formData.password.length > 20
+              ? "text-red-500"
+              : "text-red-500"
+          }`}
+        >
+          {formData.password.length <= 20 && formData.password.length > 0
+            ? "✔"
+            : "✖"}{" "}
+          Maximum 20 characters
+        </p>
+
+        <p className={`${/[A-Z]/.test(formData.password) ? "text-green-600" : "text-red-500"}`}>
+          {/[A-Z]/.test(formData.password) ? "✔" : "✖"} At least 1 uppercase letter (A–Z)
+        </p>
+
+        <p className={`${/[a-z]/.test(formData.password) ? "text-green-600" : "text-red-500"}`}>
+          {/[a-z]/.test(formData.password) ? "✔" : "✖"} At least 1 lowercase letter (a–z)
+        </p>
+
+        <p className={`${/\d/.test(formData.password) ? "text-green-600" : "text-red-500"}`}>
+          {/\d/.test(formData.password) ? "✔" : "✖"} At least 1 number (0–9)
+        </p>
+
+        <p
+          className={`${
+            /[@$!%*?&]/.test(formData.password) ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {/[@$!%*?&]/.test(formData.password) ? "✔" : "✖"} At least 1 special symbol (@$!%*?&)
+        </p>
+      </div>
+
+      {/* PASSWORD STRENGTH BAR */}
+      {formData.password && (
+        <div className="mt-3 w-full h-2 rounded bg-gray-200 overflow-hidden">
+          <div
+            className={`h-full transition-all duration-300 ${
+              passwordStrength === "Weak"
+                ? "bg-red-500 w-1/4"
+                : passwordStrength === "Medium"
+                ? "bg-yellow-500 w-2/3"
+                : "bg-green-600 w-full"
+            }`}
+          ></div>
+        </div>
+      )}
+    </div>
+
+    {/* Confirm Password */}
+    <div>
+      <Label>Confirm Password</Label>
+      <div className="relative">
+        <Input
+          name="confirmPassword"
+          type={showConfirmPassword ? "text" : "password"}
+          value={formData.confirmPassword}
+          onChange={(e) => {
+            if (e.target.value.length <= 20) {
+              handleChange(e);
+            }
+          }}
+          maxLength={20}
+          placeholder="Confirm password"
+          className="pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          className="absolute right-3 top-3 text-gray-500"
+        >
+          {showConfirmPassword ? <EyeOff /> : <Eye />}
+        </button>
+      </div>
+
+      {formData.confirmPassword && (
+        <p
+          className={`text-sm mt-1 ${
+            formData.password === formData.confirmPassword
+              ? "text-green-600"
+              : "text-red-500"
+          }`}
+        >
+          {formData.password === formData.confirmPassword
+            ? "✔ Passwords match"
+            : "✖ Passwords do not match"}
+        </p>
+      )}
+    </div>
+
+    {/* Submit Button */}
+    <Button type="submit" disabled={isLoading} className="w-full bg-emerald-600">
+      {isLoading ? "Creating Account..." : "Create Account"}
+    </Button>
+  </form>
+)}
+
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -37,13 +37,7 @@
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
       }
 
-      // ✅ Check if email is verified
-      if (!user.isVerified) {
-        return NextResponse.json({ 
-          error: "Please verify your email before logging in. Check your inbox for the verification link." 
-        }, { status: 403 });
-      }
-
+ 
       // 🔑 Generate JWT token with secure error handling
       let token;
       try {

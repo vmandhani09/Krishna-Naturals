@@ -1,76 +1,64 @@
 import { dbConnect } from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { NextRequest, NextResponse } from "next/server";
-import { sendEmail, getVerificationEmailTemplate } from "@/lib/sendEmail";
+
+const SECRET_KEY = process.env.JWT_SECRET || "your-secret-key";
 
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
+    const body = await req.json();
+    const { name, email, password } = body;
 
-    let body;
-    try {
-      body = await req.json();
-    } catch (error) {
-      return NextResponse.json({ error: "Invalid request body format" }, { status: 400 });
+    if (!name || !email || !password) {
+      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
-    const { name, email, password, confirmPassword, agreeToTerms } = body;
-
-    // 🔍 Validate input
-    if (!name || !email || !password || !confirmPassword || agreeToTerms !== true) {
-      return NextResponse.json({ error: "All fields are required, and you must agree to the terms" }, { status: 400 });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    if (password !== confirmPassword) {
-      return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
-    }
-
-    // 🔍 Normalize email for case-insensitive check
-    const normalizedEmail = email.toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
-
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return NextResponse.json({ error: "Email is already in use" }, { status: 409 });
+      return NextResponse.json({ error: "Email already registered" }, { status: 409 });
     }
 
-    // 🔒 Hash password securely before saving
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 🔑 Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-
-    // ✅ Save new user instance with default cart and verification token
-    const newUser = new User({ 
-      name, 
-      email: normalizedEmail, 
-      password: hashedPassword, 
+    const newUser = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
       cart: [],
-      isVerified: false,
-      verificationToken,
-      authProvider: "local"
     });
-    await newUser.save();
 
-    // 📧 Send verification email
-    const protocol = req.headers.get("x-forwarded-proto") || "http";
-    const host = req.headers.get("host") || "localhost:3000";
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`;
-    const verificationLink = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
-    const html = getVerificationEmailTemplate(verificationLink, name);
-    const emailSent = await sendEmail(normalizedEmail, "Verify Your Email - Dryfruit Grove", html);
+    const token = jwt.sign(
+      { userId: newUser._id.toString(), name: newUser.name, email: newUser.email },
+      SECRET_KEY,
+      { expiresIn: "7d" },
+    );
 
-    if (!emailSent) {
-      console.error("Failed to send verification email");
-      // Still return success, but log the error
-    }
+    const response = NextResponse.json(
+      {
+        message: "Registration successful",
+        token,
+        user: {
+          id: newUser._id.toString(),
+          name: newUser.name,
+          email: newUser.email,
+        },
+      },
+      { status: 201 },
+    );
 
-    return NextResponse.json({ 
-      success: true,
-      message: "Registration successful! Please check your email to verify your account." 
-    }, { status: 201 });
+    response.headers.set(
+      "Set-Cookie",
+      `token=${token}; HttpOnly; Path=/; Secure; SameSite=Lax`,
+    );
 
+    return response;
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

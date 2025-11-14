@@ -4,9 +4,9 @@ import type { Metadata } from "next"
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from "@/components/theme-provider"
 import { ConditionalLayout } from "@/components/layout/conditional-layout"
-import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/hooks/userAuth";
 import "./globals.css"
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-sans' })
 
@@ -26,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable}`}>
+          <Toaster richColors position="top-center" />
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
             <AuthProvider>
             <ConditionalLayout>{children}</ConditionalLayout>

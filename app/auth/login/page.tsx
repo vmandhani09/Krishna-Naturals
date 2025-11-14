@@ -11,37 +11,34 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
-import { useAuth } from "@/hooks/userAuth";
+import { useAuth, AUTH_TOKEN_EVENT } from "@/hooks/userAuth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useAuth(); // reactive auth state
+  const { setUser } = useAuth();
   const { syncLocalCartToDB } = useCart();
   const { syncLocalWishlistToDB } = useWishlist();
 
-  const [formData, setFormData] = useState({ email: "", password: "", rememberMe: false });
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    rememberMe: false,
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Show messages from query params (email verification)
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("verified") === "true") {
-      setSuccessMessage("Email verified successfully! You can now log in.");
-    }
-    if (urlParams.get("error")) {
-      const error = urlParams.get("error");
-      if (error === "invalid_token") setErrorMessage("Invalid or expired verification token.");
-      else if (error === "already_verified") setSuccessMessage("Your email is already verified. You can now log in.");
-      else if (error === "verification_failed") setErrorMessage("Email verification failed. Please try again.");
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("verified") === "true") {
+      setSuccessMessage("Email verified successfully! You can now login.");
     }
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,39 +48,44 @@ export default function LoginPage() {
     setSuccessMessage("");
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      const result = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        setErrorMessage(result.error || "Login failed. Please try again.");
+      if (!res.ok) {
+        setErrorMessage(data.error || "Invalid credentials");
         setIsLoading(false);
         return;
       }
 
-      if (result.token) {
-        // Save token
-        localStorage.setItem("userToken", result.token);
+      const token = data.token;
 
-        // Update reactive user state (Header will reflect immediately)
-        setUser(result.user);
+      // ===========================
+      // STORE JWT IN BOTH PLACES
+      // ===========================
+      localStorage.setItem("userToken", token);
+      document.cookie = `token=${token}; path=/; SameSite=Lax;`;
 
-        // Notify any listeners (optional)
-        window.dispatchEvent(new Event("storage"));
+      // ===========================
+      // UPDATE AUTH STATE
+      // ===========================
+      setUser(data.user);
+      window.dispatchEvent(
+        new CustomEvent(AUTH_TOKEN_EVENT, { detail: token }),
+      );
 
-        // Sync cart/wishlist from localStorage to DB
-        await syncLocalCartToDB(result.token);
-        await syncLocalWishlistToDB(result.token);
+      // SYNC CART + WISHLIST
+      await syncLocalCartToDB(token);
+      await syncLocalWishlistToDB(token);
 
-        // Redirect to home
-        router.push("/");
-      } else {
-        setErrorMessage(result.error || "Invalid credentials");
-      }
+      router.push("/");
     } catch (err) {
       console.error("Login error:", err);
       setErrorMessage("Something went wrong. Please try again.");
@@ -93,11 +95,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-emerald-600">Dryfruit Grove</h1>
-          <p className="text-gray-600 mt-2">Welcome back! Please sign in to your account</p>
+          <p className="text-gray-600 mt-2">Welcome back!</p>
         </div>
 
         <Card>
@@ -110,99 +112,99 @@ export default function LoginPage() {
                 {errorMessage}
               </div>
             )}
+
             {successMessage && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
                 {successMessage}
               </div>
             )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <Label htmlFor="email">Email Address</Label>
+                <Label>Email Address</Label>
                 <div className="relative mt-1">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="email"
                     name="email"
                     type="email"
+                    placeholder="Enter your email"
+                    className="pl-10"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="pl-10"
-                    placeholder="Enter your email"
                     required
-                    autoComplete="email"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label>Password</Label>
                 <div className="relative mt-1">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="pl-10 pr-10"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="pl-10 pr-10"
-                    placeholder="Enter your password"
                     required
-                    autoComplete="current-password"
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-gray-400"
+                    onClick={() => setShowPassword((s) => !s)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff /> : <Eye />}
                   </button>
                 </div>
               </div>
 
+              {/* 🔥 Forgot Password + Remember Me section restored */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="rememberMe"
                     checked={formData.rememberMe}
                     onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, rememberMe: checked as boolean }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        rememberMe: checked as boolean,
+                      }))
                     }
                   />
-                  <Label htmlFor="rememberMe" className="text-sm">
-                    Remember me
-                  </Label>
+                  <Label htmlFor="rememberMe">Remember me</Label>
                 </div>
-                <Link href="/forgot-password" className="text-sm text-emerald-600 hover:underline">
-                  Forgot password?
+
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-emerald-600 hover:underline"
+                >
+                  Forgot Password?
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={isLoading}
+              >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
 
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  Don&apos;t have an account?{" "}
-                  <Link href="/auth/register" className="text-emerald-600 hover:underline font-medium">
-                    Sign up
+                  Don’t have an account?{" "}
+                  <Link
+                    href="/auth/register"
+                    className="text-emerald-600 hover:underline font-medium"
+                  >
+                    Sign Up
                   </Link>
                 </p>
               </div>
             </form>
           </CardContent>
         </Card>
-
-        <div className="mt-6 text-center text-xs text-gray-500">
-          By signing in, you agree to our{" "}
-          <Link href="#" className="text-emerald-600 hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="#" className="text-emerald-600 hover:underline">
-            Privacy Policy
-          </Link>
-        </div>
       </div>
     </div>
   );
